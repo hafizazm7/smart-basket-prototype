@@ -7,7 +7,9 @@ alter table public.promotions
   add constraint promotions_eligibility_valid
   check (eligibility in ('public', 'loyalty', 'personalized', 'unknown')) not valid;
 
-create or replace view public.active_promotions
+drop view if exists public.active_promotions;
+
+create view public.active_promotions
 with (security_invoker = true)
 as
 select
@@ -20,14 +22,14 @@ select
   pay_quantity,
   promo_price,
   discount_percent,
-  eligibility,
   currency,
   source_url,
   starts_at,
   ends_at,
   observed_at,
   metadata,
-  created_at
+  created_at,
+  eligibility
 from (
   select
     p.*,
