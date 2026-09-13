@@ -48,6 +48,7 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
 .shop-summary{background:var(--green-softer);border:1px solid #d8ede3;border-radius:18px;padding:15px}.shop-badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:var(--green-soft);color:var(--green);font-size:11px;font-weight:900}.shop-store{font-size:27px;font-weight:900;margin-top:10px}.shop-total{font-size:21px;font-weight:900}.progress{height:8px;background:#e4ebe7;border-radius:999px;overflow:hidden;margin-top:13px}.progress span{display:block;height:100%;background:var(--green);width:0;transition:.2s}
 .shop-list{padding:2px 14px}.check-row{padding:13px 0;border-bottom:1px solid var(--line)}.check-row:last-child{border-bottom:0}.check-main{display:grid;grid-template-columns:27px 1fr auto;gap:10px;align-items:start}.check-main input{width:22px;height:22px;accent-color:var(--green);margin-top:1px}.product{font-weight:800}.checked .product{text-decoration:line-through;color:#949d98}.product-meta{font-size:12px;color:var(--muted);line-height:1.42;margin-top:4px}.product-price{font-weight:900}.photo-link{margin:7px 0 0 37px;border:0;background:none;color:var(--green);font-size:12px;font-weight:800;padding:2px 0}.source-row{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:11px;color:var(--muted)}
 .completion{margin-top:14px;background:var(--green-soft);border:1px solid #d0eadf;border-radius:16px;padding:13px;text-align:center;color:var(--green-dark);font-weight:800;display:none}.completion.show{display:block}
+.shop-store-tabs{display:flex;gap:8px;overflow-x:auto;margin:14px 0 2px;padding:1px 0 3px;scrollbar-width:none}.shop-store-tabs::-webkit-scrollbar{display:none}.shop-store-tab{flex:1 0 auto;min-width:112px;height:44px;border:1px solid var(--line);border-radius:13px;background:#fff;color:#65726b;font-size:12px;font-weight:850;padding:0 12px}.shop-store-tab.active{border-color:var(--green);background:var(--green-soft);color:var(--green);box-shadow:0 4px 12px rgba(20,122,88,.08)}.shop-nav-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.shop-nav-actions .secondary{width:100%;min-height:54px}.shop-nav-actions button:disabled{cursor:default;opacity:.42}
 .store-setting{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--line)}.store-setting:last-child{border-bottom:0}.store-left{display:flex;align-items:center;gap:11px}.switch{position:relative;width:48px;height:28px;flex:0 0 48px}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#d9dfdc;border-radius:999px;transition:.2s}.slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.18);transition:.2s}.switch input:checked + .slider{background:var(--green)}.switch input:checked + .slider:before{transform:translateX(20px)}
 .local-store{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:15px;padding:12px 13px;background:#fff}.add-store-row{display:grid;grid-template-columns:1fr auto;gap:9px}.max-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.max-grid button{height:43px;border-radius:12px;border:1px solid var(--line);background:#fff;font-weight:800}.max-grid button.active{border-color:var(--green);background:var(--green-soft);color:var(--green)}
 .camera-box{height:190px;border:1.5px dashed #bcd0c6;border-radius:20px;background:linear-gradient(180deg,#fbfdfc,#f6faf8);display:grid;place-items:center;text-align:center;padding:20px}.camera-icon{width:58px;height:58px;border-radius:18px;background:var(--green-soft);display:grid;place-items:center;font-size:28px;margin:0 auto 10px}.field-label{font-size:12px;font-weight:800;color:#4a5750;margin:13px 2px 7px}.detected-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.confirm-note{font-size:12px;line-height:1.45;color:var(--muted);margin:12px 2px 0}
@@ -147,6 +148,8 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
       <div class="progress"><span id="shopProgress"></span></div>
     </div>
 
+    <div class="shop-store-tabs" id="shopStoreTabs" aria-label="Switch store"></div>
+
     <div class="section-title">Buy here</div>
     <div class="card shop-list" id="shopItems"></div>
 
@@ -159,7 +162,10 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
 
     <div id="shoppingDone" class="completion">✓ Shopping complete — your list is finished.</div>
     <div style="height:16px"></div>
-    <button class="primary" id="nextStore">Next store</button>
+    <div class="shop-nav-actions">
+      <button class="secondary" id="prevStore">← Previous store</button>
+      <button class="primary" id="nextStore">Next store →</button>
+    </div>
   </section>
 
   <section class="screen" id="storesScreen">
@@ -279,10 +285,11 @@ function renderCompare(){
 function renderShop(){
   const p=getStorePlan();state.storeIndex=Math.min(state.storeIndex,p.stores.length-1);const s=p.stores[state.storeIndex];
   $('#storeCounter').textContent='STORE '+(state.storeIndex+1)+' OF '+p.stores.length;$('#shopStoreName').textContent=s.name;$('#shopStoreTotal').textContent=money(s.total);$('#freshnessText').textContent='Updated today';
+  const tabs=$('#shopStoreTabs');tabs.innerHTML='';p.stores.forEach((store,i)=>{const b=document.createElement('button');b.className='shop-store-tab'+(i===state.storeIndex?' active':'');b.textContent=store.short+' '+(i+1)+'/'+p.stores.length;b.setAttribute('aria-label','Open '+store.name);b.onclick=()=>{state.storeIndex=i;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})};tabs.appendChild(b)});
   const box=$('#shopItems');box.innerHTML='';
   s.items.forEach(name=>{const id=s.name+'|'+name,price=p.priceFor(name,s.name),row=document.createElement('div');row.className='check-row'+(state.checks[id]?' checked':'');row.innerHTML='<div class="check-main"><input type="checkbox"><div><div class="product"></div><div class="product-meta">Expected '+money(price)+'</div><div class="source-row"><span class="dot-status"></span><span>Website price · updated today</span></div></div><div class="product-price">'+money(price)+'</div></div><button class="photo-link">📷 Price different?</button>';row.querySelector('.product').textContent=name;const cb=row.querySelector('input');cb.checked=!!state.checks[id];cb.onchange=()=>{state.checks[id]=cb.checked;persist();renderShop()};row.querySelector('.photo-link').onclick=()=>openUpdate({product:name,store:s.name,size:'',price:price,id});box.appendChild(row)});
   const done=s.items.filter(n=>state.checks[s.name+'|'+n]).length;$('#shopProgressText').textContent=done+' of '+s.items.length+' items done';$('#shopProgress').style.width=(done/s.items.length*100)+'%';
-  const final=state.storeIndex===p.stores.length-1;$('#nextStore').textContent=final?'Finish shopping':'Next store';$('#shoppingDone').classList.remove('show');$('#nextStore').disabled=false;$('#nextStore').style.opacity='1';
+  const final=state.storeIndex===p.stores.length-1;const first=state.storeIndex===0;$('#prevStore').disabled=first;$('#nextStore').textContent=final?'Finish shopping':'Next store →';$('#shoppingDone').classList.remove('show');$('#nextStore').disabled=false;$('#nextStore').style.opacity='1';
 }
 
 function storeLogoFor(name){return retailers.find(r=>r.name===name)||{short:name.slice(0,2).toUpperCase(),cls:'yasar'}}
@@ -306,6 +313,7 @@ $('#quickStores').onclick=()=>showScreen('stores');
 $$('#bottomNav button').forEach(b=>b.onclick=()=>showScreen(b.dataset.screen));
 $$('.segment button').forEach(b=>b.onclick=()=>{ $$('.segment button').forEach(x=>x.classList.toggle('active',x===b));$('#compareRecommended').classList.toggle('hidden',b.dataset.compare!=='recommended');$('#compareByStore').classList.toggle('hidden',b.dataset.compare!=='store');$('#compareSingle').classList.toggle('hidden',b.dataset.compare!=='single')});
 $('#startShopping').onclick=()=>{state.storeIndex=0;persist();showScreen('shop')};
+$('#prevStore').onclick=()=>{if(state.storeIndex>0){state.storeIndex--;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}};
 $('#nextStore').onclick=()=>{const p=getStorePlan();if(state.storeIndex<p.stores.length-1){state.storeIndex++;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}else{$('#shoppingDone').classList.add('show');$('#nextStore').textContent='Shopping completed ✓';$('#nextStore').disabled=true;$('#nextStore').style.opacity='.65';toast('Shopping complete')}};
 $('#shopPhotoBtn').onclick=()=>{const p=getStorePlan(),s=p.stores[state.storeIndex];openUpdate({store:s.name,returnTo:'shop'})};
 $('#backFromUpdate').onclick=()=>showScreen(updateContext.returnTo||'list');
