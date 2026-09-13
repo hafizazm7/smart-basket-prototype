@@ -73,17 +73,17 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
 
   <section class="screen active" id="listScreen">
     <h1>Your shopping list</h1>
-    <p class="sub">Type what you need, paste a list, or update a shelf price with a photo.</p>
+    <p class="sub">Paste or type your shopping list, one item per line, or update a shelf price with a photo.</p>
 
     <div class="card stack">
-      <div class="add-row">
-        <input class="text-input" id="singleItem" placeholder="Add an item…" />
-        <button class="add-btn" id="addItemBtn" aria-label="Add item">+</button>
-      </div>
-      <button class="paste-btn" id="pasteToggle">Paste multiple items</button>
-      <div id="pasteBox" class="hidden stack">
+      <div id="pasteBox" class="stack">
         <textarea class="textarea" id="pasteInput" placeholder="Carrots&#10;Lemons&#10;Mayonnaise&#10;Baby wipes"></textarea>
-        <button class="secondary full" id="pasteAddBtn">Add pasted items</button>
+        <button class="secondary full" id="pasteAddBtn">Add items</button>
+      </div>
+      <button class="paste-btn" id="pasteToggle">+ Add single item</button>
+      <div class="add-row hidden" id="singleItemBox">
+        <input class="text-input" id="singleItem" placeholder="Add one item…" />
+        <button class="add-btn" id="addItemBtn" aria-label="Add item">+</button>
       </div>
     </div>
 
@@ -724,7 +724,7 @@ async function analyzeShelfPhotoV3(file){
 
 $('#addItemBtn').onclick=()=>{const i=$('#singleItem');if(!i.value.trim())return;addItem(i.value);i.value='';toast('Item added')};
 $('#singleItem').addEventListener('keydown',e=>{if(e.key==='Enter')$('#addItemBtn').click()});
-$('#pasteToggle').onclick=()=>$('#pasteBox').classList.toggle('hidden');
+$('#pasteToggle').onclick=()=>{const box=$('#singleItemBox');box.classList.toggle('hidden');const open=!box.classList.contains('hidden');$('#pasteToggle').textContent=open?'Hide single item':'+ Add single item';if(open)$('#singleItem').focus()};
 $('#pasteAddBtn').onclick=()=>{const vals=$('#pasteInput').value.split(/\n|,/).map(v=>v.trim()).filter(Boolean);if(!vals.length)return;state.items.push(...vals);$('#pasteInput').value='';persist();renderList();toast(vals.length+' items added')};
 $('#clearList').onclick=()=>{state.items=[];persist();renderList()};
 $('#findCheapest').onclick=()=>state.items.length?showScreen('compare'):toast('Add at least one item');
