@@ -123,12 +123,13 @@ export async function searchAldiCheckjebon(query: string, limit = 20): Promise<{
     return { retailerKey: "aldi", sourceUrl: DATA_URL, status: 502, records: [], parser: "checkjebon" };
   }
 
-  const queryTokens = normalizeText(trimmed).split(" ").filter(Boolean);
+  const matchAll = trimmed === "*";
+  const queryTokens = matchAll ? [] : normalizeText(trimmed).split(" ").filter(Boolean);
   const products = (aldi.d ?? [])
     .map((product) => ({ product, normalizedName: normalizeText(product.n ?? "") }))
     .filter(({ product, normalizedName }) => {
       if (!product.n || typeof product.p !== "number" || product.p <= 0) return false;
-      return queryTokens.every((token) => normalizedName.includes(token));
+      return matchAll || queryTokens.every((token) => normalizedName.includes(token));
     })
     .slice(0, Math.max(1, Math.min(50, limit)));
 
