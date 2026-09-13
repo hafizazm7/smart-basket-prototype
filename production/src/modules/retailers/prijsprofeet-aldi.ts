@@ -113,13 +113,15 @@ export async function searchAldiPrijsProfeet(query: string, limit = 20): Promise
   records: NormalizedRetailerPrice[];
   parser: "prijsprofeet";
 }> {
-  const trimmed = query.trim();
+  const trimmed = query.trim() || "*";
   const safeLimit = Math.max(1, Math.min(50, limit));
-  const sourceUrl = `${API_BASE}/products/search/${encodeURIComponent(trimmed)}?retailer=aldi&page=1&page_size=${safeLimit}`;
-
-  if (!trimmed || trimmed === "*") {
-    return { retailerKey: "aldi", sourceUrl, status: 400, records: [], parser: "prijsprofeet" };
-  }
+  const params = new URLSearchParams({
+    q: trimmed,
+    retailer: "aldi",
+    promotion_status: "active",
+    page_size: String(safeLimit),
+  });
+  const sourceUrl = `${API_BASE}/search?${params.toString()}`;
 
   const response = await fetch(sourceUrl, {
     cache: "no-store",
