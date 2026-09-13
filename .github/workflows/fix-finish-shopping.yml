@@ -1,0 +1,38 @@
+name: Fix finish shopping UX
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch finish shopping behavior
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+          old = "$('#nextStoreBtn').onclick=()=>{if(state.storeIndex<shopData.length-1){state.storeIndex++;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}else toast('Shopping complete')};"
+          new = """$('#nextStoreBtn').onclick=()=>{if(state.storeIndex<shopData.length-1){state.storeIndex++;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}else{const totalItems=shopData.reduce((n,s)=>n+s.items.length,0);const checked=shopData.reduce((n,s)=>n+s.items.filter(item=>state.checks[s.name+'|'+item]).length,0);$('#shopScreen').innerHTML='<div style=\"padding:36px 4px 110px;text-align:center\"><div style=\"width:78px;height:78px;margin:8px auto 18px;border-radius:50%;display:grid;place-items:center;background:#e8f5ef;color:#0b7a53;font-size:42px;font-weight:900\">✓</div><h1 style=\"margin-bottom:8px\">Shopping complete</h1><p class=\"sub\" style=\"margin-bottom:22px\">'+checked+' of '+totalItems+' items checked across '+shopData.length+' stores.</p><div class=\"card\" style=\"text-align:left;margin-bottom:16px\"><div class=\"row space\" style=\"padding:4px 0 12px\"><span>Basket total</span><strong>€25.20</strong></div><div class=\"row space\" style=\"padding:12px 0;border-top:1px solid #dfe6e2\"><span>Stores visited</span><strong>2</strong></div><div class=\"row space\" style=\"padding:12px 0 4px;border-top:1px solid #dfe6e2\"><span>Saved vs 1 store</span><strong style=\"color:#0b7a53\">€3.70</strong></div></div><button class=\"primary\" id=\"newListBtn\">Start a new list</button><button class=\"secondary\" id=\"reviewTripBtn\" style=\"width:100%;margin-top:10px\">Review shopping</button></div>';$('#newListBtn').onclick=()=>{state.items=[];state.checks={};state.storeIndex=0;persist();renderList();showScreen('list')};$('#reviewTripBtn').onclick=()=>{state.storeIndex=shopData.length-1;persist();renderShop()};window.scrollTo({top:0,behavior:'smooth'})}};"""
+          if old in s:
+              p.write_text(s.replace(old, new))
+          elif 'Shopping complete</h1>' in s:
+              print('Finish shopping UX already patched')
+          else:
+              raise SystemExit('Target handler not found; refusing unsafe patch')
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name "Smart Basket Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix finish shopping completion screen"
+          git push
