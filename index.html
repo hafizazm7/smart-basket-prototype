@@ -49,6 +49,7 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
 .shop-list{padding:2px 14px}.check-row{padding:13px 0;border-bottom:1px solid var(--line)}.check-row:last-child{border-bottom:0}.check-main{display:grid;grid-template-columns:27px 1fr auto;gap:10px;align-items:start}.check-main input{width:22px;height:22px;accent-color:var(--green);margin-top:1px}.product{font-weight:800}.checked .product{text-decoration:line-through;color:#949d98}.product-meta{font-size:12px;color:var(--muted);line-height:1.42;margin-top:4px}.product-price{font-weight:900}.photo-link{margin:7px 0 0 37px;border:0;background:none;color:var(--green);font-size:12px;font-weight:800;padding:2px 0}.source-row{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:11px;color:var(--muted)}
 .completion{margin-top:14px;background:var(--green-soft);border:1px solid #d0eadf;border-radius:16px;padding:13px;text-align:center;color:var(--green-dark);font-weight:800;display:none}.completion.show{display:block}
 .shop-store-tabs{display:flex;gap:8px;overflow-x:auto;margin:14px 0 2px;padding:1px 0 3px;scrollbar-width:none}.shop-store-tabs::-webkit-scrollbar{display:none}.shop-store-tab{flex:1 0 auto;min-width:112px;height:44px;border:1px solid var(--line);border-radius:13px;background:#fff;color:#65726b;font-size:12px;font-weight:850;padding:0 12px}.shop-store-tab.active{border-color:var(--green);background:var(--green-soft);color:var(--green);box-shadow:0 4px 12px rgba(20,122,88,.08)}.shop-nav-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.shop-nav-actions .secondary{width:100%;min-height:54px}.shop-nav-actions button:disabled{cursor:default;opacity:.42}
+.celebrate-modal{position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(14,31,24,.52);backdrop-filter:blur(8px)}.celebrate-modal.open{display:flex}.celebrate-card{position:relative;width:min(100%,420px);overflow:hidden;border-radius:28px;background:#fff;padding:30px 22px 22px;text-align:center;box-shadow:0 28px 70px rgba(10,35,25,.28);animation:celebratePop .32s ease-out}.celebrate-icon{width:78px;height:78px;margin:0 auto 15px;border-radius:50%;display:grid;place-items:center;background:var(--green-soft);color:var(--green);font-size:42px;font-weight:950;animation:checkPop .45s cubic-bezier(.2,.9,.25,1.25)}.celebrate-eyebrow{font-size:11px;font-weight:900;letter-spacing:.9px;color:var(--green);text-transform:uppercase}.celebrate-title{font-size:27px;font-weight:950;letter-spacing:-.6px;margin:7px 0 18px}.celebrate-save-label{font-size:13px;color:var(--muted);font-weight:800}.celebrate-save{font-size:47px;line-height:1;font-weight:950;color:var(--green);letter-spacing:-1.4px;margin:5px 0 6px}.celebrate-pct{font-size:13px;color:var(--green-dark);font-weight:850}.celebrate-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:20px 0 12px}.celebrate-stat{border:1px solid var(--line);border-radius:15px;padding:11px 7px;background:#fbfdfc}.celebrate-stat strong{display:block;font-size:16px}.celebrate-stat span{display:block;margin-top:4px;font-size:10px;color:var(--muted);line-height:1.2}.celebrate-items{font-size:12px;color:#4e5a54;font-weight:750}.celebrate-note{font-size:10px;color:var(--muted);line-height:1.4;margin:8px 0 17px}.celebrate-card .secondary{width:100%;margin-top:9px}.confetti{position:absolute;top:-18px;width:7px;height:18px;border-radius:3px;opacity:.82;animation:confettiFall 1.7s ease-in forwards}.confetti:nth-child(1){left:8%;background:#147a58;animation-delay:.05s;transform:rotate(14deg)}.confetti:nth-child(2){left:19%;background:#f1aa3c;animation-delay:.18s;transform:rotate(-18deg)}.confetti:nth-child(3){left:32%;background:#00a6dd;animation-delay:.02s;transform:rotate(24deg)}.confetti:nth-child(4){left:45%;background:#e86e78;animation-delay:.23s;transform:rotate(-12deg)}.confetti:nth-child(5){left:58%;background:#147a58;animation-delay:.10s;transform:rotate(17deg)}.confetti:nth-child(6){left:70%;background:#f1aa3c;animation-delay:.28s;transform:rotate(-28deg)}.confetti:nth-child(7){left:82%;background:#00a6dd;animation-delay:.14s;transform:rotate(12deg)}.confetti:nth-child(8){left:91%;background:#e86e78;animation-delay:.04s;transform:rotate(-22deg)}@keyframes celebratePop{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}@keyframes checkPop{0%{transform:scale(.55);opacity:0}100%{transform:scale(1);opacity:1}}@keyframes confettiFall{0%{transform:translateY(-15px) rotate(0);opacity:0}12%{opacity:.9}100%{transform:translateY(420px) rotate(260deg);opacity:0}}
 .store-setting{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--line)}.store-setting:last-child{border-bottom:0}.store-left{display:flex;align-items:center;gap:11px}.switch{position:relative;width:48px;height:28px;flex:0 0 48px}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#d9dfdc;border-radius:999px;transition:.2s}.slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.18);transition:.2s}.switch input:checked + .slider{background:var(--green)}.switch input:checked + .slider:before{transform:translateX(20px)}
 .local-store{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:15px;padding:12px 13px;background:#fff}.add-store-row{display:grid;grid-template-columns:1fr auto;gap:9px}.max-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.max-grid button{height:43px;border-radius:12px;border:1px solid var(--line);background:#fff;font-weight:800}.max-grid button.active{border-color:var(--green);background:var(--green-soft);color:var(--green)}
 .camera-box{height:190px;border:1.5px dashed #bcd0c6;border-radius:20px;background:linear-gradient(180deg,#fbfdfc,#f6faf8);display:grid;place-items:center;text-align:center;padding:20px}.camera-icon{width:58px;height:58px;border-radius:18px;background:var(--green-soft);display:grid;place-items:center;font-size:28px;margin:0 auto 10px}.field-label{font-size:12px;font-weight:800;color:#4a5750;margin:13px 2px 7px}.detected-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.confirm-note{font-size:12px;line-height:1.45;color:var(--muted);margin:12px 2px 0}
@@ -210,6 +211,27 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
     <button class="primary" id="saveUpdatedPrice">Use this price for this store</button>
   </section>
 
+  <div class="celebrate-modal" id="completeModal" role="dialog" aria-modal="true" aria-labelledby="completeTitle">
+    <div class="celebrate-card">
+      <i class="confetti"></i><i class="confetti"></i><i class="confetti"></i><i class="confetti"></i><i class="confetti"></i><i class="confetti"></i><i class="confetti"></i><i class="confetti"></i>
+      <div class="celebrate-icon">✓</div>
+      <div class="celebrate-eyebrow">Smart Basket win</div>
+      <div class="celebrate-title" id="completeTitle">Shopping complete 🎉</div>
+      <div class="celebrate-save-label">You saved</div>
+      <div class="celebrate-save" id="completeSaved">€0.00</div>
+      <div class="celebrate-pct" id="completePct">0% saved vs 1 store</div>
+      <div class="celebrate-stats">
+        <div class="celebrate-stat"><strong id="completeTotal">€0.00</strong><span>Your basket</span></div>
+        <div class="celebrate-stat"><strong id="completeSingle">€0.00</strong><span>1-store basket</span></div>
+        <div class="celebrate-stat"><strong id="completeStores">0</strong><span>Stores visited</span></div>
+      </div>
+      <div class="celebrate-items" id="completeItems"></div>
+      <div class="celebrate-note">Savings are based on the recommended basket and current available prices.</div>
+      <button class="primary" id="completeDone">Done</button>
+      <button class="secondary" id="completeNewList">Start a new list</button>
+    </div>
+  </div>
+
   <nav class="bottom-nav" id="bottomNav">
     <button class="active" data-screen="list"><span class="nav-ico">☷</span>List</button>
     <button data-screen="compare"><span class="nav-ico">⌁</span>Compare</button>
@@ -292,6 +314,23 @@ function renderShop(){
   const final=state.storeIndex===p.stores.length-1;const first=state.storeIndex===0;$('#prevStore').disabled=first;$('#nextStore').textContent=final?'Finish shopping':'Next store →';$('#shoppingDone').classList.remove('show');$('#nextStore').disabled=false;$('#nextStore').style.opacity='1';
 }
 
+function showCompletion(p){
+  const totalItems=p.stores.reduce((n,store)=>n+store.items.length,0);
+  const checked=p.stores.reduce((n,store)=>n+store.items.filter(item=>state.checks[store.name+'|'+item]).length,0);
+  $('#completeSaved').textContent=money(p.saving);
+  $('#completePct').textContent=p.pct+'% saved vs cheapest 1-store basket';
+  $('#completeTotal').textContent=money(p.recommended);
+  $('#completeSingle').textContent=money(p.single);
+  $('#completeStores').textContent=p.stores.length;
+  $('#completeItems').textContent=checked+' of '+totalItems+' items checked';
+  $('#completeModal').classList.add('open');
+  $('#shoppingDone').textContent='✓ Shopping complete — you saved '+money(p.saving)+'!';
+  $('#shoppingDone').classList.add('show');
+  $('#nextStore').textContent='Shopping completed ✓';
+  $('#nextStore').disabled=true;
+  $('#nextStore').style.opacity='.65';
+}
+
 function storeLogoFor(name){return retailers.find(r=>r.name===name)||{short:name.slice(0,2).toUpperCase(),cls:'yasar'}}
 function renderStores(){
   const box=$('#storeSettings');box.innerHTML='';retailers.forEach(r=>{const row=document.createElement('div');row.className='store-setting';row.innerHTML='<div class="store-left"><span class="logo-dot '+r.cls+'">'+r.short+'</span><div><div style="font-weight:820">'+r.name+'</div><div class="helper">Online prices</div></div></div><label class="switch"><input type="checkbox"><span class="slider"></span></label>';const input=row.querySelector('input');input.checked=state.selected.includes(r.name);input.onchange=()=>{state.selected=input.checked?[...new Set([...state.selected,r.name])]:state.selected.filter(x=>x!==r.name);persist()};box.appendChild(row)});
@@ -314,7 +353,9 @@ $$('#bottomNav button').forEach(b=>b.onclick=()=>showScreen(b.dataset.screen));
 $$('.segment button').forEach(b=>b.onclick=()=>{ $$('.segment button').forEach(x=>x.classList.toggle('active',x===b));$('#compareRecommended').classList.toggle('hidden',b.dataset.compare!=='recommended');$('#compareByStore').classList.toggle('hidden',b.dataset.compare!=='store');$('#compareSingle').classList.toggle('hidden',b.dataset.compare!=='single')});
 $('#startShopping').onclick=()=>{state.storeIndex=0;persist();showScreen('shop')};
 $('#prevStore').onclick=()=>{if(state.storeIndex>0){state.storeIndex--;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}};
-$('#nextStore').onclick=()=>{const p=getStorePlan();if(state.storeIndex<p.stores.length-1){state.storeIndex++;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}else{$('#shoppingDone').classList.add('show');$('#nextStore').textContent='Shopping completed ✓';$('#nextStore').disabled=true;$('#nextStore').style.opacity='.65';toast('Shopping complete')}};
+$('#nextStore').onclick=()=>{const p=getStorePlan();if(state.storeIndex<p.stores.length-1){state.storeIndex++;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}else{showCompletion(p)}};
+$('#completeDone').onclick=()=>$('#completeModal').classList.remove('open');
+$('#completeNewList').onclick=()=>{state.items=[];state.checks={};state.storeIndex=0;persist();$('#completeModal').classList.remove('open');showScreen('list');toast('Ready for a new list')};
 $('#shopPhotoBtn').onclick=()=>{const p=getStorePlan(),s=p.stores[state.storeIndex];openUpdate({store:s.name,returnTo:'shop'})};
 $('#backFromUpdate').onclick=()=>showScreen(updateContext.returnTo||'list');
 $('#cameraBox').onclick=()=>$('#cameraInput').click();
