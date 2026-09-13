@@ -4,10 +4,14 @@ import { normalizeRetailerPriceRecord, type NormalizedRetailerPrice } from "./no
 const API_BASE = "https://api.etos.nl";
 const CLIENT_ID = "appie";
 const APP_HEADERS = {
+  "x-application": "AHWEBSHOP",
+  "x-client-name": CLIENT_ID,
+  "x-client-version": "9.27.0",
   accept: "application/json",
   "content-type": "application/json",
   "accept-language": "nl-NL,nl;q=0.9",
-  "user-agent": "SmartBasket-MVP/0.1",
+  "x-accept-language": "nl-NL",
+  "user-agent": "Appie/9.27.0",
 };
 
 type TokenResponse = {
