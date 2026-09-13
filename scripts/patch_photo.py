@@ -11,6 +11,14 @@ new_camera = '<div class="helper" id="cameraStatus" style="margin-top:5px">One p
 if 'id="cameraStatus"' not in s and old_camera in s:
     s = s.replace(old_camera, new_camera, 1)
 
+# Keep the camera shortcut, but also offer an explicit gallery picker.
+camera_input = '<input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />'
+gallery_html = camera_input + '\n    <button class="secondary full" id="galleryBtn" style="margin-top:10px">🖼️ Choose from gallery</button>\n    <input id="galleryInput" type="file" accept="image/*" hidden />'
+if 'id="galleryInput"' not in s:
+    if camera_input not in s:
+        raise SystemExit('camera input anchor not found')
+    s = s.replace(camera_input, gallery_html, 1)
+
 helper_anchor = "$('#addItemBtn').onclick=()=>{"
 photo_helpers = r'''function cleanOCRLine(v){return String(v||'').replace(/\s+/g,' ').trim()}
 function parseShelfPhotoText(text){
@@ -52,5 +60,12 @@ if old_onchange in s:
     s = s.replace(old_onchange, new_onchange, 1)
 elif 'await analyzeShelfPhoto(file)' not in s:
     raise SystemExit('camera handler not found')
+
+camera_click = "$('#cameraBox').onclick=()=>$('#cameraInput').click();"
+gallery_handlers = camera_click + "\n$('#galleryBtn').onclick=()=>$('#galleryInput').click();\n$('#galleryInput').onchange=async()=>{const file=$('#galleryInput').files[0];if(file)await analyzeShelfPhoto(file)};"
+if "$('#galleryBtn').onclick" not in s:
+    if camera_click not in s:
+        raise SystemExit('camera click handler not found')
+    s = s.replace(camera_click, gallery_handlers, 1)
 
 p.write_text(s)
