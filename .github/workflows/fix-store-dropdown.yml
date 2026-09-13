@@ -1,53 +1,39 @@
 name: Fix Update Price store dropdown
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["Add shopping history"]
+    types: [completed]
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Replace free-text store with My Stores dropdown
         run: |
           python - <<'PY'
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text()
-
           old_html = '<div class="field-label">Store</div><input class="text-input" id="detectedStore" placeholder="Store name" />'
           new_html = '<div class="field-label">Store</div><select class="select" id="detectedStore" aria-label="Store"></select><div class="helper" style="margin-top:6px">Choose from My Stores</div>'
           if old_html in s:
               s = s.replace(old_html, new_html, 1)
-          elif 'id="detectedStore"' in s and '<select class="select" id="detectedStore"' in s:
-              print('Store dropdown HTML already patched')
-          else:
+          elif '<select class="select" id="detectedStore"' not in s:
               raise SystemExit('Store field anchor not found')
-
           old_open = "let updateContext={id:null,returnTo:'list'};\nfunction openUpdate(ctx={}){updateContext={id:ctx.id||null,returnTo:ctx.returnTo||state.lastScreen||'list'};$('#detectedProduct').value=ctx.product||'';$('#detectedStore').value=ctx.store||'';$('#detectedPrice').value=ctx.price?Number(ctx.price).toFixed(2):'';$('#detectedSize').value=ctx.size||'';$('#detectedTime').textContent='Now';showScreen('update')}"
-          new_open = """let updateContext={id:null,returnTo:'list'};
-function populateUpdateStores(selected=''){
-  const select=$('#detectedStore');
-  const stores=[...new Set([...(state.selected||[]),...(state.locals||[])])];
-  select.innerHTML='';
-  if(!stores.length){
-    const o=document.createElement('option');o.value='';o.textContent='No stores selected — add one in My Stores';o.disabled=true;o.selected=true;select.appendChild(o);return;
-  }
-  stores.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;select.appendChild(o)});
-  if(selected&&stores.includes(selected))select.value=selected;else select.value=stores[0];
-}
-function openUpdate(ctx={}){updateContext={id:ctx.id||null,returnTo:ctx.returnTo||state.lastScreen||'list'};$('#detectedProduct').value=ctx.product||'';populateUpdateStores(ctx.store||'');$('#detectedPrice').value=ctx.price?Number(ctx.price).toFixed(2):'';$('#detectedSize').value=ctx.size||'';$('#detectedTime').textContent='Now';showScreen('update')}"""
+          new_open = "let updateContext={id:null,returnTo:'list'};\nfunction populateUpdateStores(selected=''){const select=$('#detectedStore');const stores=[...new Set([...(state.selected||[]),...(state.locals||[])])];select.innerHTML='';if(!stores.length){const o=document.createElement('option');o.value='';o.textContent='No stores selected — add one in My Stores';o.disabled=true;o.selected=true;select.appendChild(o);return}stores.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;select.appendChild(o)});if(selected&&stores.includes(selected))select.value=selected;else select.value=stores[0]}\nfunction openUpdate(ctx={}){updateContext={id:ctx.id||null,returnTo:ctx.returnTo||state.lastScreen||'list'};$('#detectedProduct').value=ctx.product||'';populateUpdateStores(ctx.store||'');$('#detectedPrice').value=ctx.price?Number(ctx.price).toFixed(2):'';$('#detectedSize').value=ctx.size||'';$('#detectedTime').textContent='Now';showScreen('update')}"
           if old_open in s:
               s = s.replace(old_open, new_open, 1)
-          elif 'function populateUpdateStores' in s:
-              print('Store dropdown JS already patched')
-          else:
+          elif 'function populateUpdateStores' not in s:
               raise SystemExit('openUpdate anchor not found')
-
           p.write_text(s)
           PY
       - name: Commit fix
