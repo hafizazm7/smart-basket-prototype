@@ -1,5 +1,5 @@
 import { searchAhMobileApi } from "./ah-mobile-api";
-import { searchAldiCheckjebon } from "./checkjebon-aldi";
+import { searchAldiHybrid } from "./aldi-hybrid";
 import { searchActionApi } from "./action-api";
 import { searchEtosMobileApi } from "./etos-mobile-api";
 import { searchKruidvatApi } from "./kruidvat-api";
@@ -12,7 +12,7 @@ export type RetailerSearchResult = {
   sourceUrl: string;
   status: number;
   records: NormalizedRetailerPrice[];
-  parser: "ah-mobile-api" | "checkjebon" | "action-graphql" | "etos-mobile-api" | "kruidvat-app-api";
+  parser: "ah-mobile-api" | "checkjebon" | "prijsprofeet" | "action-graphql" | "etos-mobile-api" | "kruidvat-app-api";
 };
 
 export class OfficialSearchAdapter implements RetailerAdapter {
@@ -39,7 +39,7 @@ export class OfficialSearchAdapter implements RetailerAdapter {
       case "ah":
         return searchAhMobileApi(trimmed);
       case "aldi":
-        return searchAldiCheckjebon(trimmed);
+        return searchAldiHybrid(trimmed);
       case "action":
         return searchActionApi(trimmed);
       case "etos":
