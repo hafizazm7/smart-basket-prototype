@@ -215,7 +215,7 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
       <div><div class="field-label">Shelf price</div><input class="text-input" id="detectedPrice" inputmode="decimal" placeholder="€ 2.49" /></div>
       <div><div class="field-label">Size</div><input class="text-input" id="detectedSize" placeholder="520 ml" /></div>
     </div>
-    <div class="field-label">Store</div><input class="text-input" id="detectedStore" placeholder="Store name" />
+    <div class="field-label">Store</div><select class="select" id="detectedStore" aria-label="Store"></select><div class="helper" style="margin-top:6px">Choose from My Stores</div>
     <div class="row space" style="margin-top:12px"><div class="inline-info"><span class="dot-status"></span><span>Source: shelf photo</span></div><div class="helper" id="detectedTime">Now</div></div>
     <p class="confirm-note">Please confirm or correct the detected details. A fresh confirmed shelf price takes priority for this store/branch.</p>
     <div style="height:16px"></div>
@@ -379,7 +379,8 @@ function renderStores(){
 }
 
 let updateContext={id:null,returnTo:'list'};
-function openUpdate(ctx={}){updateContext={id:ctx.id||null,returnTo:ctx.returnTo||state.lastScreen||'list'};$('#detectedProduct').value=ctx.product||'';$('#detectedStore').value=ctx.store||'';$('#detectedPrice').value=ctx.price?Number(ctx.price).toFixed(2):'';$('#detectedSize').value=ctx.size||'';$('#detectedTime').textContent='Now';showScreen('update')}
+function populateUpdateStores(selected=''){const select=$('#detectedStore');const stores=[...new Set([...(state.selected||[]),...(state.locals||[])])];select.innerHTML='';if(!stores.length){const o=document.createElement('option');o.value='';o.textContent='No stores selected — add one in My Stores';o.disabled=true;o.selected=true;select.appendChild(o);return}stores.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;select.appendChild(o)});if(selected&&stores.includes(selected))select.value=selected;else select.value=stores[0]}
+function openUpdate(ctx={}){updateContext={id:ctx.id||null,returnTo:ctx.returnTo||state.lastScreen||'list'};$('#detectedProduct').value=ctx.product||'';populateUpdateStores(ctx.store||'');$('#detectedPrice').value=ctx.price?Number(ctx.price).toFixed(2):'';$('#detectedSize').value=ctx.size||'';$('#detectedTime').textContent='Now';showScreen('update')}
 
 $('#addItemBtn').onclick=()=>{const i=$('#singleItem');if(!i.value.trim())return;addItem(i.value);i.value='';toast('Item added')};
 $('#singleItem').addEventListener('keydown',e=>{if(e.key==='Enter')$('#addItemBtn').click()});
