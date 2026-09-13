@@ -13,6 +13,10 @@ export function isPromotionActive(promotion: Promotion, now = new Date()): boole
   return true;
 }
 
+export function isPromotionUsableForMvp(promotion: Promotion): boolean {
+  return (promotion.eligibility ?? "public") === "public";
+}
+
 export function effectiveTotalForQuantity(
   regularPriceEach: number,
   quantity: number,
@@ -22,7 +26,9 @@ export function effectiveTotalForQuantity(
   if (!Number.isFinite(quantity) || quantity <= 0) return 0;
 
   const qty = Math.floor(quantity);
-  if (!promotion || !isPromotionActive(promotion)) return roundMoney(regularPriceEach * qty);
+  if (!promotion || !isPromotionActive(promotion) || !isPromotionUsableForMvp(promotion)) {
+    return roundMoney(regularPriceEach * qty);
+  }
 
   const minQty = Math.max(1, Math.floor(promotion.minQuantity ?? 1));
   if (qty < minQty) return roundMoney(regularPriceEach * qty);
@@ -43,6 +49,21 @@ export function effectiveTotalForQuantity(
   if (promotion.kind === "percent" && promotion.discountPercent != null) {
     const discount = Math.min(100, Math.max(0, promotion.discountPercent)) / 100;
     return roundMoney(qty * regularPriceEach * (1 - discount));
+  }
+
+  if (promotion.kind === "nth_percent" && promotion.discountPercent != null) {
+    const discount = Math.min(100, Math.max(0, promotion.discountPercent)) / 100;
+    const groups = Math.floor(qty / minQty);
+    const remainder = qty % minQty;
+    const groupTotal = (minQty - discount) * regularPriceEach;
+    return roundMoney(groups * groupTotal + remainder * regularPriceEach);
+  }
+
+  if (promotion.kind === "nth_fixed" && promotion.promoPrice != null) {
+    const groups = Math.floor(qty / minQty);
+    const remainder = qty % minQty;
+    const groupTotal = (minQty - 1) * regularPriceEach + promotion.promoPrice;
+    return roundMoney(groups * groupTotal + remainder * regularPriceEach);
   }
 
   if (promotion.kind === "fixed_price" && promotion.promoPrice != null) {
