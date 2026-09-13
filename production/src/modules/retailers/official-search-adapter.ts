@@ -1,4 +1,5 @@
 import { searchAhMobileApi } from "./ah-mobile-api";
+import { searchAldiApi } from "./aldi-api";
 import { normalizeRetailerPriceRecord, type NormalizedRetailerPrice } from "./normalize-record";
 import { parseProductJsonLd } from "./jsonld";
 import { RETAILER_SOURCES } from "./sources";
@@ -14,7 +15,7 @@ export type RetailerSearchResult = {
   sourceUrl: string;
   status: number;
   records: NormalizedRetailerPrice[];
-  parser: "json-ld" | "ah-mobile-api";
+  parser: "json-ld" | "ah-mobile-api" | "aldi-api";
 };
 
 export class OfficialSearchAdapter implements RetailerAdapter {
@@ -37,9 +38,8 @@ export class OfficialSearchAdapter implements RetailerAdapter {
   async searchNormalized(query: string): Promise<RetailerSearchResult> {
     const trimmed = query.trim();
 
-    if (this.key === "ah") {
-      return searchAhMobileApi(trimmed);
-    }
+    if (this.key === "ah") return searchAhMobileApi(trimmed);
+    if (this.key === "aldi") return searchAldiApi(trimmed);
 
     if (!trimmed) {
       return {
