@@ -1,0 +1,14 @@
+:root {
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f7f7f5;
+  color: #171717;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: #f7f7f5; }
+button, input, textarea, select { font: inherit; }
+.shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.card { width: min(560px, 100%); background: white; border: 1px solid #e8e8e4; border-radius: 22px; padding: 28px; box-shadow: 0 10px 35px rgba(0,0,0,.06); }
+.eyebrow { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 10px; }
+h1 { font-size: clamp(30px, 8vw, 46px); line-height: 1.02; margin: 0 0 16px; }
+p { line-height: 1.55; }
