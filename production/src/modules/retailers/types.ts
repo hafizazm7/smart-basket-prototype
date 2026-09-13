@@ -1,4 +1,4 @@
-import type { PromotionKind } from "@/modules/pricing/types";
+import type { PromotionEligibility, PromotionKind } from "@/modules/pricing/types";
 
 export type RetailerKey = "ah" | "aldi" | "action" | "etos" | "kruidvat";
 
@@ -9,6 +9,7 @@ export type RetailerPromotionRecord = {
   payQuantity?: number | null;
   promoPrice?: number | null;
   discountPercent?: number | null;
+  eligibility?: PromotionEligibility;
   startsAt?: string | null;
   endsAt?: string | null;
 };
