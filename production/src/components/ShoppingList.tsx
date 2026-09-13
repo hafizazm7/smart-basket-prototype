@@ -63,7 +63,7 @@ export default function ShoppingList() {
 
   function addBulkItems() {
     const lines = bulkInput
-      .split(/\r?\n/)
+      .split(/\r?\n|,/)
       .map((line) => line.trim())
       .filter(Boolean);
 
@@ -125,155 +125,155 @@ export default function ShoppingList() {
   }
 
   function handleFindCheapest() {
-    if (!items.length) return;
-    setNotice("Your list is ready. Store price comparison will be connected in Step 7.");
+    if (!items.length) {
+      setNotice("Add at least one item first.");
+      return;
+    }
+    setNotice("Your list is ready. Store price comparison is being connected in Step 7.");
   }
 
   function handlePhotoUpdate() {
-    setNotice("Shelf-photo price updates will be connected after the list build.");
+    setNotice("Shelf-photo price updates will be connected later in the MVP build.");
   }
 
   return (
-    <main className="app-shell">
+    <main className="app">
       <header className="topbar">
-        <div>
-          <p className="brand">Smart Basket</p>
-          <p className="topbar-note">LIST → COMPARE → SHOP</p>
+        <div className="brand-wrap">
+          <div className="brand-icon" aria-hidden="true">SB</div>
+          <div>
+            <div className="brand-title">Smart Basket</div>
+            <div className="brand-sub">Save money without the hassle</div>
+          </div>
         </div>
-        <span className="step-chip">Step 6</span>
+        <div className="header-actions" aria-label="Quick actions">
+          <button className="header-action" type="button" disabled aria-label="Shopping history">◷</button>
+          <button className="header-action" type="button" disabled aria-label="My Stores">⌁</button>
+        </div>
       </header>
 
-      <section className="list-screen" aria-label="Shopping list">
-        <div className="intro">
-          <h1>Your shopping list</h1>
-          <p>Paste or type your shopping list, one item per line.</p>
-        </div>
+      <section className="screen active" aria-label="Shopping list">
+        <h1>Your shopping list</h1>
+        <p className="sub">Paste or type your shopping list, one item per line, or update a shelf price with a photo.</p>
 
-        <section className="panel composer" aria-label="Add shopping items">
-          <textarea
-            className="bulk-input"
-            value={bulkInput}
-            onChange={(event) => setBulkInput(event.target.value)}
-            placeholder={"Carrots\nLemons\nMayonnaise\nBaby wipes"}
-            rows={5}
-          />
-          <button className="button secondary full" onClick={addBulkItems} type="button">
-            Add items
-          </button>
+        <section className="card stack" aria-label="Add shopping items">
+          <div className="stack">
+            <textarea
+              className="textarea"
+              value={bulkInput}
+              onChange={(event) => setBulkInput(event.target.value)}
+              placeholder={"Carrots\nLemons\nMayonnaise\nBaby wipes"}
+              rows={4}
+            />
+            <button className="secondary full" onClick={addBulkItems} type="button">
+              Add items
+            </button>
+          </div>
 
           <button
-            className="text-button"
+            className="paste-btn"
             type="button"
             onClick={() => setSingleMode((value) => !value)}
             aria-expanded={singleMode}
           >
-            {singleMode ? "− Hide single item" : "+ Add single item"}
+            {singleMode ? "Hide single item" : "+ Add single item"}
           </button>
 
           {singleMode && (
-            <div className="single-row">
+            <div className="add-row">
               <input
-                className="single-input"
+                className="text-input"
                 value={singleInput}
                 onChange={(event) => setSingleInput(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") addSingleItem();
                 }}
-                placeholder="e.g. Dreft 500 ml"
+                placeholder="Add one item…"
                 aria-label="Add one item"
               />
-              <button className="round-add" type="button" onClick={addSingleItem} aria-label="Add item">
+              <button className="add-btn" type="button" onClick={addSingleItem} aria-label="Add item">
                 +
               </button>
             </div>
           )}
         </section>
 
-        <section className="list-section" aria-live="polite">
-          <div className="section-heading">
-            <div>
-              <h2>Items</h2>
-              <p>{items.length ? `${items.length} item${items.length === 1 ? "" : "s"} · ${totalUnits} unit${totalUnits === 1 ? "" : "s"}` : "Your list is empty"}</p>
-            </div>
-            {items.length > 0 && (
-              <button className="clear-button" type="button" onClick={clearAll}>
-                Clear all
-              </button>
-            )}
+        <div className="row space list-heading">
+          <div className="item-count">
+            {items.length} item{items.length === 1 ? "" : "s"}
+            {items.length > 0 && <span className="unit-count"> · {totalUnits} unit{totalUnits === 1 ? "" : "s"}</span>}
           </div>
+          {items.length > 0 && (
+            <button className="danger-ghost" type="button" onClick={clearAll}>Clear</button>
+          )}
+        </div>
 
+        <section className="card list-card" aria-live="polite">
           {!ready ? (
-            <div className="empty-card">Loading your list…</div>
+            <div className="list-empty">Loading your list…</div>
           ) : items.length === 0 ? (
-            <div className="empty-card">
-              <span className="empty-icon" aria-hidden="true">🧺</span>
-              <strong>Start with what you need</strong>
-              <span>Paste several items above and add them in one tap.</span>
-            </div>
+            <div className="list-empty">Your list is empty.</div>
           ) : (
-            <div className="items-card">
-              {items.map((item) => (
-                <article className="shopping-item" key={item.id}>
-                  <div className="item-main">
-                    {editingId === item.id ? (
-                      <div className="edit-wrap">
-                        <input
-                          className="edit-input"
-                          value={editingText}
-                          autoFocus
-                          onChange={(event) => setEditingText(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") saveEdit(item.id);
-                            if (event.key === "Escape") setEditingId(null);
-                          }}
-                        />
-                        <button className="mini-action" type="button" onClick={() => saveEdit(item.id)}>Save</button>
-                      </div>
-                    ) : (
-                      <button className="item-name" type="button" onClick={() => startEdit(item)}>
-                        {item.text}
-                        <span>Edit</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="item-controls">
-                    <div className="qty-control" aria-label={`Quantity for ${item.text}`}>
-                      <button type="button" onClick={() => changeQuantity(item.id, -1)} aria-label="Decrease quantity">−</button>
-                      <span>{item.quantity}</span>
-                      <button type="button" onClick={() => changeQuantity(item.id, 1)} aria-label="Increase quantity">+</button>
+            items.map((item) => (
+              <article className="list-item" key={item.id}>
+                <div className="item-icon" aria-hidden="true">🛒</div>
+                <div className="item-copy">
+                  {editingId === item.id ? (
+                    <div className="edit-wrap">
+                      <input
+                        className="edit-input"
+                        value={editingText}
+                        autoFocus
+                        onChange={(event) => setEditingText(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") saveEdit(item.id);
+                          if (event.key === "Escape") setEditingId(null);
+                        }}
+                      />
+                      <button className="mini-action" type="button" onClick={() => saveEdit(item.id)}>Save</button>
                     </div>
-                    <button className="delete-button" type="button" onClick={() => removeItem(item.id)} aria-label={`Delete ${item.text}`}>
-                      Delete
+                  ) : (
+                    <button className="item-name" type="button" onClick={() => startEdit(item)}>
+                      {item.text}
                     </button>
+                  )}
+
+                  <div className="item-meta">Quantity / size optional</div>
+                  <div className="qty-control" aria-label={`Quantity for ${item.text}`}>
+                    <button type="button" onClick={() => changeQuantity(item.id, -1)} aria-label="Decrease quantity">−</button>
+                    <span>{item.quantity}</span>
+                    <button type="button" onClick={() => changeQuantity(item.id, 1)} aria-label="Increase quantity">+</button>
                   </div>
-                </article>
-              ))}
-            </div>
+                </div>
+                <div className="row-actions">
+                  <button className="edit-link" type="button" onClick={() => startEdit(item)}>Edit</button>
+                  <button className="remove" type="button" onClick={() => removeItem(item.id)} aria-label={`Delete ${item.text}`}>×</button>
+                </div>
+              </article>
+            ))
           )}
         </section>
 
-        <section className="actions-block">
-          <button className="button photo-button full" type="button" onClick={handlePhotoUpdate}>
-            📷 Update shelf price
-          </button>
-          <button
-            className="button primary full"
-            type="button"
-            disabled={!items.length}
-            onClick={handleFindCheapest}
-          >
-            Find Cheapest
-          </button>
-          {notice && <p className="notice">{notice}</p>}
+        <section className="soft-card photo-card">
+          <div className="row space">
+            <div>
+              <div className="photo-title">Price different in-store?</div>
+              <div className="helper">Take a shelf photo and confirm the price.</div>
+            </div>
+            <button className="secondary photo-action" type="button" onClick={handlePhotoUpdate} aria-label="Update shelf price">📷</button>
+          </div>
         </section>
+
+        <div className="action-spacer" />
+        <button className="primary" type="button" onClick={handleFindCheapest}>Find Cheapest</button>
+        {notice && <p className="notice">{notice}</p>}
       </section>
 
       <nav className="bottom-nav" aria-label="Smart Basket navigation">
-        <button className="nav-item active" type="button"><span>☷</span>List</button>
-        <button className="nav-item" type="button" disabled><span>≍</span>Compare</button>
-        <button className="nav-item" type="button" disabled><span>✓</span>Shop</button>
-        <button className="nav-item" type="button" disabled><span>⌂</span>Stores</button>
+        <button className="active" type="button"><span className="nav-ico">☷</span>List</button>
+        <button type="button" disabled><span className="nav-ico">⌁</span>Compare</button>
+        <button type="button" disabled><span className="nav-ico">✓</span>Shop</button>
+        <button type="button" disabled><span className="nav-ico">⌂</span>Stores</button>
       </nav>
     </main>
   );
