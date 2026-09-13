@@ -15,6 +15,8 @@ query ProductSearch($input: SearchProductsInput!) {
           image
           isDeal
           isNew
+          aisleName
+          brandInfo { name }
           price {
             currencyPosition
             currencyCode
@@ -43,6 +45,8 @@ type ActionProduct = {
   image?: string;
   isDeal?: boolean;
   isNew?: boolean;
+  aisleName?: string;
+  brandInfo?: { name?: string };
   price?: {
     currencyCode?: string;
     current?: {
@@ -122,18 +126,21 @@ function absoluteUrl(input?: string): string | null {
 }
 
 function mapProduct(product: ActionProduct, observedAt: string): NormalizedRetailerPrice | null {
-  const name = product.description?.trim();
+  const brand = product.brandInfo?.name?.trim() || null;
+  const category = product.category?.trim() || product.aisleName?.trim() || null;
+  const pack = product.description?.trim() || null;
+  const name = [brand, category].filter(Boolean).join(" ").trim() || pack;
   const price = productPrice(product);
   if (!name || !price || price <= 0) return null;
 
-  const size = parseSize(name);
+  const size = parseSize(pack ?? undefined) ?? parseSize(name);
 
   return normalizeRetailerPriceRecord({
     retailerKey: "action",
     externalId: product.code?.trim() || null,
     rawName: name,
-    brand: null,
-    description: product.category?.trim() || null,
+    brand,
+    description: pack,
     sizeValue: size?.value ?? null,
     sizeUnit: size?.unit ?? null,
     productUrl: absoluteUrl(product.href),
