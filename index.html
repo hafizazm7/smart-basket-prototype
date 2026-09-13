@@ -59,6 +59,7 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
 .hidden{display:none!important}
 @media(min-width:481px){body{padding:24px 0}.app{min-height:calc(100vh - 48px);border-radius:28px;overflow:hidden}.bottom-nav{bottom:24px;border-radius:0 0 28px 28px}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -206,7 +207,7 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
     <p class="sub">Take a shelf photo, then confirm the detected product, price and size before saving.</p>
 
     <div class="camera-box" id="cameraBox">
-      <div><div class="camera-icon">📷</div><div style="font-weight:850">Take shelf photo</div><div class="helper" style="margin-top:5px">One product / price at a time</div></div>
+      <div><div class="camera-icon">📷</div><div style="font-weight:850">Take shelf photo</div><div class="helper" id="cameraStatus" style="margin-top:5px">One product / price at a time</div></div>
     </div>
     <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
 
@@ -382,6 +383,34 @@ let updateContext={id:null,returnTo:'list'};
 function populateUpdateStores(selected=''){const select=$('#detectedStore');const stores=[...new Set([...(state.selected||[]),...(state.locals||[])])];select.innerHTML='';if(!stores.length){const o=document.createElement('option');o.value='';o.textContent='No stores selected — add one in My Stores';o.disabled=true;o.selected=true;select.appendChild(o);return}stores.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;select.appendChild(o)});if(selected&&stores.includes(selected))select.value=selected;else select.value=stores[0]}
 function openUpdate(ctx={}){updateContext={id:ctx.id||null,returnTo:ctx.returnTo||state.lastScreen||'list'};$('#detectedProduct').value=ctx.product||'';populateUpdateStores(ctx.store||'');$('#detectedPrice').value=ctx.price?Number(ctx.price).toFixed(2):'';$('#detectedSize').value=ctx.size||'';$('#detectedTime').textContent='Now';showScreen('update')}
 
+function cleanOCRLine(v){return String(v||'').replace(/\s+/g,' ').trim()}
+function parseShelfPhotoText(text){
+  const lines=String(text||'').split(/\r?\n/).map(cleanOCRLine).filter(v=>v.length>1);
+  const full=lines.join('\n');
+  let size='';
+  const sizeMatch=full.match(/\b(\d+(?:[.,]\d+)?)\s*(kg|g|mg|ml|cl|l|stuks?|st|pcs?|pack)\b/i);
+  if(sizeMatch){const unit=sizeMatch[2].toLowerCase()==='st'?'stuks':sizeMatch[2];size=(sizeMatch[1].replace(',','.')+' '+unit).replace(/\s+/g,' ')}
+  const prices=[];
+  lines.forEach((line,index)=>{const hasEuro=/€/.test(line);const looksUnit=/(?:\/\s*(?:kg|l)|per\s+(?:kg|l)|100\s*(?:g|ml)|prijs\s*per)/i.test(line);const promo=/actie|bonus|aanbieding|nu\b|korting/i.test(line);const matches=line.match(/\b\d{1,3}[.,]\d{2}\b/g)||[];matches.forEach(raw=>{const value=Number(raw.replace(',','.'));if(value>0&&value<100){let score=(hasEuro?5:0)+(promo?2:0)+(index/Math.max(lines.length,1));if(looksUnit)score-=5;prices.push({value,score})}})});
+  prices.sort((a,b)=>b.score-a.score);const price=prices.length?prices[0].value:null;
+  const productCandidates=lines.map((line,index)=>{let cleaned=line.replace(/€\s*\d{1,3}[.,]\d{2}/g,' ').replace(/\b\d{1,3}[.,]\d{2}\b/g,' ').replace(/\b\d+(?:[.,]\d+)?\s*(?:kg|g|mg|ml|cl|l|stuks?|st|pcs?|pack)\b/ig,' ').replace(/\s+/g,' ').trim();const letters=(cleaned.match(/[A-Za-zÀ-ÿ]/g)||[]).length;const bad=/^(?:bonus|actie|aanbieding|prijs|korting|per\b|totaal|inhoud|houdbaar|barcode|ean)/i.test(cleaned)||/\b(?:prijs per|per kg|per liter)\b/i.test(cleaned);const barcode=/\d{7,}/.test(cleaned);const score=letters+(index<Math.max(4,lines.length*.55)?4:0)-(bad?30:0)-(barcode?30:0);return {cleaned,letters,score}}).filter(x=>x.letters>=4&&x.cleaned.length>=3&&x.cleaned.length<=70);
+  productCandidates.sort((a,b)=>b.score-a.score);const product=productCandidates.length?productCandidates[0].cleaned:'';
+  return {product,price,size,raw:text};
+}
+async function analyzeShelfPhoto(file){
+  const status=$('#cameraStatus');if(!file)return;status.textContent='Reading photo… first scan may take a few seconds.';$('#cameraBox').style.opacity='.72';
+  try{
+    if(!window.Tesseract)throw new Error('Photo reader unavailable');
+    const result=await Tesseract.recognize(file,'nld+eng',{logger:m=>{if(m.status==='recognizing text'&&Number.isFinite(m.progress))status.textContent='Reading label… '+Math.round(m.progress*100)+'%';else if(m.status)status.textContent='Reading photo…'}});
+    const parsed=parseShelfPhotoText(result?.data?.text||'');let found=0;
+    if(parsed.product){if(!updateContext.id||!$('#detectedProduct').value.trim())$('#detectedProduct').value=parsed.product;found++}
+    if(Number.isFinite(parsed.price)){$('#detectedPrice').value=parsed.price.toFixed(2);found++}
+    if(parsed.size){$('#detectedSize').value=parsed.size;found++}
+    status.textContent=found===3?'Detected product, price and size — please confirm.':found?'Detected '+found+' of 3 details — please check and correct the rest.':'Could not read the label clearly — try a closer, straighter photo.';toast(found?'Photo details detected':'Could not read label clearly');
+  }catch(err){console.error(err);status.textContent='Could not analyze this photo. You can retake it or enter the details manually.';toast('Photo reading failed')}
+  finally{$('#cameraBox').style.opacity='1'}
+}
+
 $('#addItemBtn').onclick=()=>{const i=$('#singleItem');if(!i.value.trim())return;addItem(i.value);i.value='';toast('Item added')};
 $('#singleItem').addEventListener('keydown',e=>{if(e.key==='Enter')$('#addItemBtn').click()});
 $('#pasteToggle').onclick=()=>$('#pasteBox').classList.toggle('hidden');
@@ -401,7 +430,7 @@ $('#completeNewList').onclick=()=>{state.items=[];state.checks={};state.storeInd
 $('#shopPhotoBtn').onclick=()=>{const p=getStorePlan(),s=p.stores[state.storeIndex];openUpdate({store:s.name,returnTo:'shop'})};
 $('#backFromUpdate').onclick=()=>showScreen(updateContext.returnTo||'list');
 $('#cameraBox').onclick=()=>$('#cameraInput').click();
-$('#cameraInput').onchange=()=>{if($('#cameraInput').files.length){if(!$('#detectedPrice').value)$('#detectedPrice').value='2.49';if(!$('#detectedSize').value)$('#detectedSize').value='520 ml';toast('Photo ready — confirm details')}};
+$('#cameraInput').onchange=async()=>{const file=$('#cameraInput').files[0];if(file)await analyzeShelfPhoto(file)};
 $('#saveUpdatedPrice').onclick=()=>{const p=parseFloat($('#detectedPrice').value.replace(',','.'));if(!Number.isFinite(p)||p<=0){toast('Enter a valid price');return}const product=$('#detectedProduct').value.trim(),store=$('#detectedStore').value.trim();if(!product||!store){toast('Confirm product and store');return}const id=updateContext.id||store+'|'+product;state.overrides[id]=p;persist();toast('Shelf price saved');showScreen(updateContext.returnTo||'list')};
 $('#addLocalStore').onclick=()=>{const v=$('#localStoreInput').value.trim();if(!v)return;if(!state.locals.includes(v))state.locals.push(v);$('#localStoreInput').value='';persist();renderStores()};
 $$('#maxStoreGrid button').forEach(b=>b.onclick=()=>{state.maxStores=b.dataset.max;persist();renderStores()});
