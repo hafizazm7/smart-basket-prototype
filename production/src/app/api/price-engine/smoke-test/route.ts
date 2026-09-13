@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 const FIXTURES: { retailer: RetailerKey; query: string }[] = [
   { retailer: "ah", query: "melk" },
-  { retailer: "aldi", query: "*" },
+  { retailer: "aldi", query: "melk" },
   { retailer: "action", query: "shampoo" },
   { retailer: "etos", query: "shampoo" },
   { retailer: "kruidvat", query: "shampoo" },
