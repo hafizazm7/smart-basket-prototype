@@ -15,12 +15,13 @@ jobs:
       - name: Patch prototype
         run: |
           python scripts/patch_photo.py
+          python scripts/patch_list_default.py
           git config user.name "Smart Basket Bot"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
           if git diff --cached --quiet; then
-            echo "Photo extraction already present."
+            echo "Prototype patches already present."
             exit 0
           fi
-          git commit -m "Apply automatic photo extraction"
+          git commit -m "Apply automatic photo extraction and default multi-item entry"
           git push
