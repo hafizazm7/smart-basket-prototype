@@ -1,42 +1,31 @@
-import { fetchOfficialRetailerHtml } from "@/modules/retailers/official-web";
-import { parseOfficialProductPage } from "@/modules/retailers/parse-product-page";
+import { getRetailerAdapter } from "@/modules/retailers/official-search-adapter";
 import type { RetailerKey } from "@/modules/retailers/types";
 
 export const dynamic = "force-dynamic";
 
-const FIXTURES: { retailer: RetailerKey; url: string }[] = [
-  {
-    retailer: "ah",
-    url: "https://www.ah.nl/producten/product/wi185858/andrelon-volume-en-care-shampoo",
-  },
-  {
-    retailer: "aldi",
-    url: "https://www.aldi.nl/product/1229354.html",
-  },
-  {
-    retailer: "action",
-    url: "https://www.action.com/nl-nl/p/3219696/l-oreal-elvive-shampoo-clean-control/",
-  },
-  {
-    retailer: "etos",
-    url: "https://www.etos.nl/producten/etos-baby-kids-anti-prik-shampoo-300-ml-120777261.html",
-  },
-  {
-    retailer: "kruidvat",
-    url: "https://www.kruidvat.nl/kruidvat-keratin-repair-shampoo/p/6515115",
-  },
+const FIXTURES: { retailer: RetailerKey; query: string }[] = [
+  { retailer: "ah", query: "melk" },
+  { retailer: "aldi", query: "melk" },
+  { retailer: "action", query: "shampoo" },
+  { retailer: "etos", query: "shampoo" },
+  { retailer: "kruidvat", query: "shampoo" },
 ];
 
 async function runFixture(fixture: (typeof FIXTURES)[number]) {
   const started = Date.now();
 
   try {
-    const fetched = await fetchOfficialRetailerHtml(fixture.retailer, fixture.url, 12_000);
-    const record = parseOfficialProductPage(fixture.retailer, fetched.finalUrl, fetched.html);
+    const result = await getRetailerAdapter(fixture.retailer).searchNormalized(fixture.query);
+    const record = result.records[0] ?? null;
+    const ok = result.status >= 200 && result.status < 300 && Boolean(record);
 
     return {
       retailer: fixture.retailer,
-      ok: Boolean(record),
+      query: fixture.query,
+      ok,
+      parser: result.parser,
+      sourceStatus: result.status,
+      candidatesFound: result.records.length,
       elapsedMs: Date.now() - started,
       record: record
         ? {
@@ -45,16 +34,22 @@ async function runFixture(fixture: (typeof FIXTURES)[number]) {
             price: record.price,
             sizeValue: record.sizeValue,
             sizeUnit: record.sizeUnit,
+            unitPrice: record.unitPrice,
+            unitPriceUnit: record.unitPriceUnit,
             promotion: record.promotion?.label ?? null,
             sourceUrl: record.sourceUrl,
           }
         : null,
-      error: record ? null : "Reachable page, but no trustworthy record parsed.",
+      error: ok ? null : `Collector returned HTTP ${result.status} with ${result.records.length} usable records.`,
     };
   } catch (error) {
     return {
       retailer: fixture.retailer,
+      query: fixture.query,
       ok: false,
+      parser: null,
+      sourceStatus: null,
+      candidatesFound: 0,
       elapsedMs: Date.now() - started,
       record: null,
       error: error instanceof Error ? error.message : "Unknown collector error.",
