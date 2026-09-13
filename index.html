@@ -1,163 +1,321 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b7a53">
-  <title>Smart Basket</title>
-  <style>
-    :root { --green:#0b7a53; --green-2:#e8f5ef; --ink:#17211d; --muted:#66716c; --line:#dfe6e2; --paper:#fff; --bg:#f4f7f5; --orange:#f3982e; --danger:#b23a3a; }
-    * { box-sizing:border-box; }
-    html,body { margin:0; min-height:100%; background:var(--bg); color:var(--ink); font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-    button,input,textarea { font:inherit; }
-    button { cursor:pointer; }
-    .app { width:min(100%,480px); min-height:100vh; margin:0 auto; background:var(--paper); box-shadow:0 0 40px rgba(23,33,29,.08); padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
-    header { position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; min-height:72px; padding:calc(10px + env(safe-area-inset-top)) 20px 10px; background:rgba(255,255,255,.96); border-bottom:1px solid var(--line); }
-    .brand { display:flex; align-items:center; gap:10px; font-weight:800; font-size:21px; }
-    .brand-mark { width:34px; height:34px; display:grid; place-items:center; border-radius:11px; background:var(--green); color:#fff; font-size:19px; }
-    .icon-btn { width:42px; height:42px; border:0; border-radius:50%; background:var(--green-2); color:var(--green); font-size:20px; }
-    main { padding:22px 18px; }
-    h1 { font-size:28px; line-height:1.1; margin:0 0 8px; }
-    h2 { font-size:20px; margin:0; }
-    p { margin:0; }
-    .sub { color:var(--muted); line-height:1.45; margin-bottom:20px; }
-    .card { border:1px solid var(--line); border-radius:18px; background:#fff; padding:16px; box-shadow:0 6px 18px rgba(23,33,29,.04); }
-    .stack { display:grid; gap:12px; }
-    .row { display:flex; align-items:center; gap:10px; }
-    .space { justify-content:space-between; }
-    textarea { width:100%; min-height:96px; resize:vertical; border:1.5px solid #bdc9c3; border-radius:14px; padding:14px; outline:none; }
-    textarea:focus,input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(11,122,83,.12); outline:none; }
-    .primary { width:100%; min-height:52px; border:0; border-radius:14px; padding:0 18px; background:var(--green); color:#fff; font-weight:750; }
-    .secondary { min-height:44px; border:1px solid var(--line); border-radius:12px; padding:0 14px; background:#fff; color:var(--ink); font-weight:650; }
-    .text-btn { border:0; background:none; color:var(--green); font-weight:700; padding:8px 0; }
-    .hint { color:var(--muted); font-size:13px; }
-    .item { display:flex; align-items:center; min-height:56px; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); }
-    .item:last-child { border-bottom:0; }
-    .dot { width:34px; height:34px; flex:0 0 34px; display:grid; place-items:center; border-radius:10px; background:var(--green-2); }
-    .item-name { flex:1; font-weight:650; }
-    .remove { border:0; background:none; color:#89938e; font-size:22px; padding:6px; }
-    .count { margin:18px 0 10px; font-weight:750; }
-    .segment { display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:4px; padding:4px; margin:18px 0; border-radius:13px; background:#edf1ef; }
-    .segment button { min-height:40px; border:0; border-radius:10px; color:var(--muted); background:transparent; font-weight:700; }
-    .segment button.active { color:var(--ink); background:#fff; box-shadow:0 2px 8px rgba(23,33,29,.1); }
-    .recommended { border:2px solid var(--green); position:relative; padding-top:22px; }
-    .badge { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 10px; background:var(--green-2); color:var(--green); font-size:12px; font-weight:800; }
-    .recommended>.badge { position:absolute; top:-14px; left:16px; background:var(--green); color:#fff; }
-    .money { font-size:31px; font-weight:850; letter-spacing:-.6px; }
-    .saving { color:var(--green); font-weight:800; }
-    .store { display:grid; grid-template-columns:42px 1fr auto; gap:11px; align-items:center; padding:13px 0; border-bottom:1px solid var(--line); }
-    .store:last-child { border-bottom:0; }
-    .store-logo { width:40px; height:40px; display:grid; place-items:center; border-radius:11px; background:#eef3f0; font-size:12px; font-weight:850; }
-    .store-name { font-weight:750; }
-    .store-items { color:var(--muted); font-size:13px; margin-top:3px; }
-    .price { font-weight:800; }
-    .shop-head { margin-bottom:16px; }
-    .progress { height:8px; overflow:hidden; border-radius:999px; background:#e8eeeb; margin-top:13px; }
-    .progress span { display:block; height:100%; background:var(--green); transition:width .2s; }
-    .check-row { padding:14px 0; border-bottom:1px solid var(--line); }
-    .check-line { display:grid; grid-template-columns:28px 1fr auto; gap:10px; align-items:start; }
-    .check-line input { width:23px; height:23px; accent-color:var(--green); }
-    .checked .product { text-decoration:line-through; color:#8b948f; }
-    .product { font-weight:700; }
-    .meta { color:var(--muted); font-size:12px; margin-top:5px; line-height:1.4; }
-    .photo { margin:8px 0 0 38px; border:0; background:none; color:var(--green); font-size:13px; font-weight:750; padding:3px 0; }
-    .bottom { position:fixed; z-index:20; bottom:0; left:50%; transform:translateX(-50%); width:min(100%,480px); display:grid; grid-template-columns:repeat(3,1fr); padding:9px 10px calc(9px + env(safe-area-inset-bottom)); background:rgba(255,255,255,.97); border-top:1px solid var(--line); }
-    .bottom button { border:0; background:none; color:#818b86; font-size:12px; font-weight:700; padding:7px; }
-    .bottom button.active { color:var(--green); }
-    .nav-icon { display:block; font-size:22px; margin-bottom:3px; }
-    .screen { display:none; }
-    .screen.active { display:block; }
-    .empty { text-align:center; color:var(--muted); padding:32px 12px; }
-    .overlay { position:fixed; inset:0; z-index:50; display:none; align-items:flex-end; justify-content:center; background:rgba(9,20,15,.45); }
-    .overlay.open { display:flex; }
-    .sheet { width:min(100%,480px); max-height:88vh; overflow:auto; border-radius:24px 24px 0 0; background:#fff; padding:22px 18px calc(22px + env(safe-area-inset-bottom)); }
-    .sheet-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
-    .close { border:0; background:#edf2ef; width:38px; height:38px; border-radius:50%; font-size:20px; }
-    .choice { display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-bottom:1px solid var(--line); }
-    .choice input { width:21px; height:21px; accent-color:var(--green); }
-    .label { display:block; margin:14px 0 7px; font-size:13px; font-weight:800; }
-    .field { width:100%; min-height:46px; border:1.5px solid #bdc9c3; border-radius:12px; padding:0 12px; }
-    .maxshops { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; }
-    .maxshops button { min-height:42px; border:1px solid var(--line); border-radius:11px; background:#fff; font-weight:700; }
-    .maxshops button.active { border-color:var(--green); background:var(--green-2); color:var(--green); }
-    .toast { position:fixed; z-index:80; left:50%; bottom:104px; transform:translate(-50%,18px); width:max-content; max-width:calc(100% - 36px); opacity:0; pointer-events:none; border-radius:999px; padding:11px 16px; background:#17211d; color:#fff; font-size:13px; transition:.2s; }
-    .toast.show { opacity:1; transform:translate(-50%,0); }
-    @media (min-width:481px) { body { padding:24px 0; } .app { min-height:calc(100vh - 48px); border-radius:28px; overflow:hidden; } .bottom { bottom:24px; border-radius:0 0 28px 28px; } .overlay { align-items:center; } .sheet { border-radius:24px; max-height:80vh; } }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#f7faf8" />
+<title>Smart Basket — UX v1.0 Prototype</title>
+<style>
+:root{
+  --green:#147a58;
+  --green-dark:#0d6246;
+  --green-soft:#e9f6f0;
+  --green-softer:#f4fbf7;
+  --ink:#18241f;
+  --muted:#738078;
+  --line:#e3eae6;
+  --bg:#f3f6f4;
+  --card:#ffffff;
+  --warning:#f1aa3c;
+  --danger:#d35a5a;
+  --shadow:0 10px 30px rgba(20,55,42,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{display:flex;justify-content:center}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.app{width:min(100%,480px);min-height:100vh;background:#fff;position:relative;padding-bottom:calc(92px + env(safe-area-inset-bottom));box-shadow:0 0 42px rgba(24,36,31,.08)}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);backdrop-filter:blur(18px);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) 18px 11px;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px}.brand-icon{width:36px;height:36px;border-radius:12px;background:var(--green);color:#fff;display:grid;place-items:center;font-size:18px;font-weight:900}.brand-title{font-size:20px;font-weight:800;letter-spacing:-.2px}.brand-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.header-action{width:40px;height:40px;border:0;background:var(--green-soft);border-radius:50%;display:grid;place-items:center;color:var(--green);font-size:18px}
+.screen{display:none;padding:20px 18px 24px}.screen.active{display:block}
+.update-screen{display:none;min-height:calc(100vh - 70px);background:#fff}.update-screen.active{display:block}
+.update-header{display:flex;align-items:center;gap:10px;margin-bottom:18px}.back-btn{width:38px;height:38px;border:0;border-radius:50%;background:#f0f4f2;font-size:20px}.update-title{font-size:20px;font-weight:800}
+h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-size:20px;line-height:1.2;margin:0}.sub{font-size:14px;line-height:1.48;color:var(--muted);margin:0 0 18px}.section-title{font-size:14px;font-weight:800;color:#34413a;margin:20px 2px 10px}.section-title:first-child{margin-top:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:var(--shadow)}.soft-card{background:var(--green-softer);border:1px solid #d9eee4;border-radius:18px;padding:16px}
+.input-wrap{position:relative}.text-input,.textarea,.select{width:100%;border:1.5px solid #cfd9d4;border-radius:15px;background:#fff;color:var(--ink);outline:none}.text-input:focus,.textarea:focus,.select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(20,122,88,.1)}.text-input{height:50px;padding:0 14px}.textarea{min-height:102px;padding:14px;resize:vertical;line-height:1.4}.select{height:48px;padding:0 12px}
+.row{display:flex;align-items:center;gap:10px}.space{justify-content:space-between}.stack{display:grid;gap:12px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.primary{width:100%;min-height:54px;border:0;border-radius:15px;background:var(--green);color:#fff;font-weight:800;padding:0 18px;box-shadow:0 7px 16px rgba(20,122,88,.18)}.primary:active{transform:translateY(1px)}.secondary{min-height:48px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);font-weight:750;padding:0 16px}.secondary.full{width:100%}.ghost{border:0;background:none;color:var(--green);font-weight:800;padding:8px}.danger-ghost{border:0;background:none;color:var(--danger);font-weight:800;padding:8px}
+.add-row{display:grid;grid-template-columns:1fr 52px;gap:10px}.add-btn{border:0;border-radius:14px;background:var(--green);color:#fff;font-size:27px;font-weight:500}.paste-btn{width:100%;height:48px;border:1px dashed #c7d7cf;border-radius:14px;background:#fbfdfc;color:#435049;font-weight:700}
+.list-card{padding:4px 14px}.list-item{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.list-item:last-child{border-bottom:0}.item-icon{width:36px;height:36px;border-radius:11px;background:var(--green-soft);display:grid;place-items:center;font-size:17px}.item-name{font-weight:760}.item-meta{font-size:12px;color:var(--muted);margin-top:3px}.remove{border:0;background:none;color:#9aa49e;font-size:22px;padding:5px}
+.helper{font-size:12px;color:var(--muted)}.inline-info{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}.dot-status{width:8px;height:8px;border-radius:50%;background:#38a46b}.dot-status.warn{background:var(--warning)}
+.store-icons{display:flex;gap:8px;overflow:auto;padding:2px 0 6px;scrollbar-width:none}.store-icons::-webkit-scrollbar{display:none}.store-pill{flex:0 0 auto;height:42px;padding:0 13px;border-radius:13px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;box-shadow:0 4px 12px rgba(24,36,31,.03)}.logo-dot{width:25px;height:25px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:900}.ah{background:#00a6dd}.aldi{background:#1c3f95}.action{background:#e23237}.etos{background:#1c75bc}.kruidvat{background:#e3322f}.yasar{background:#2d7d32}
+.savings{background:linear-gradient(135deg,#0f7956,#158967);border-radius:22px;color:#fff;padding:18px 18px 17px;box-shadow:0 12px 24px rgba(20,122,88,.22)}.savings .eyebrow{font-size:12px;font-weight:800;opacity:.83;text-transform:uppercase;letter-spacing:.6px}.savings .big{font-size:25px;font-weight:900;line-height:1.15;margin:6px 0}.savings .small{font-size:13px;opacity:.88}
+.segment{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#eef2f0;padding:4px;border-radius:13px;margin:16px 0}.segment button{height:39px;border:0;border-radius:10px;background:transparent;color:#7a857f;font-size:12px;font-weight:800}.segment button.active{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(24,36,31,.08)}
+.recommend{border:2px solid var(--green);padding:18px 16px 15px;position:relative}.recommend-tag{position:absolute;top:-13px;left:15px;background:var(--green);color:#fff;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;letter-spacing:.2px}.basket-total{font-size:32px;font-weight:900;letter-spacing:-.8px}.label-muted{font-size:12px;color:var(--muted);font-weight:700}.store-break{padding:12px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center}.store-break:first-of-type{margin-top:12px}.store-break .count{font-size:12px;color:var(--muted);margin-top:2px}.store-break .price{font-weight:900}
+.compare-note{font-size:12px;color:var(--muted);line-height:1.45;margin-top:10px}.mini-row{padding:13px 0;border-bottom:1px solid var(--line)}.mini-row:last-child{border-bottom:0}.mini-title{font-weight:800}.mini-sub{font-size:12px;color:var(--muted);margin-top:3px}.mini-price{font-weight:900}
+.shop-summary{background:var(--green-softer);border:1px solid #d8ede3;border-radius:18px;padding:15px}.shop-badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:var(--green-soft);color:var(--green);font-size:11px;font-weight:900}.shop-store{font-size:27px;font-weight:900;margin-top:10px}.shop-total{font-size:21px;font-weight:900}.progress{height:8px;background:#e4ebe7;border-radius:999px;overflow:hidden;margin-top:13px}.progress span{display:block;height:100%;background:var(--green);width:0;transition:.2s}
+.shop-list{padding:2px 14px}.check-row{padding:13px 0;border-bottom:1px solid var(--line)}.check-row:last-child{border-bottom:0}.check-main{display:grid;grid-template-columns:27px 1fr auto;gap:10px;align-items:start}.check-main input{width:22px;height:22px;accent-color:var(--green);margin-top:1px}.product{font-weight:800}.checked .product{text-decoration:line-through;color:#949d98}.product-meta{font-size:12px;color:var(--muted);line-height:1.42;margin-top:4px}.product-price{font-weight:900}.photo-link{margin:7px 0 0 37px;border:0;background:none;color:var(--green);font-size:12px;font-weight:800;padding:2px 0}.source-row{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:11px;color:var(--muted)}
+.completion{margin-top:14px;background:var(--green-soft);border:1px solid #d0eadf;border-radius:16px;padding:13px;text-align:center;color:var(--green-dark);font-weight:800;display:none}.completion.show{display:block}
+.store-setting{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--line)}.store-setting:last-child{border-bottom:0}.store-left{display:flex;align-items:center;gap:11px}.switch{position:relative;width:48px;height:28px;flex:0 0 48px}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#d9dfdc;border-radius:999px;transition:.2s}.slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.18);transition:.2s}.switch input:checked + .slider{background:var(--green)}.switch input:checked + .slider:before{transform:translateX(20px)}
+.local-store{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:15px;padding:12px 13px;background:#fff}.add-store-row{display:grid;grid-template-columns:1fr auto;gap:9px}.max-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.max-grid button{height:43px;border-radius:12px;border:1px solid var(--line);background:#fff;font-weight:800}.max-grid button.active{border-color:var(--green);background:var(--green-soft);color:var(--green)}
+.camera-box{height:190px;border:1.5px dashed #bcd0c6;border-radius:20px;background:linear-gradient(180deg,#fbfdfc,#f6faf8);display:grid;place-items:center;text-align:center;padding:20px}.camera-icon{width:58px;height:58px;border-radius:18px;background:var(--green-soft);display:grid;place-items:center;font-size:28px;margin:0 auto 10px}.field-label{font-size:12px;font-weight:800;color:#4a5750;margin:13px 2px 7px}.detected-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.confirm-note{font-size:12px;line-height:1.45;color:var(--muted);margin:12px 2px 0}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:30;width:min(100%,480px);display:grid;grid-template-columns:repeat(4,1fr);background:rgba(255,255,255,.98);border-top:1px solid var(--line);padding:7px 8px calc(7px + env(safe-area-inset-bottom));backdrop-filter:blur(18px)}.bottom-nav button{border:0;background:none;color:#89928d;font-size:11px;font-weight:800;padding:7px 2px}.bottom-nav button.active{color:var(--green)}.nav-ico{display:block;font-size:21px;line-height:1;margin-bottom:4px}
+.toast{position:fixed;z-index:100;bottom:104px;left:50%;transform:translate(-50%,16px);opacity:0;pointer-events:none;background:#17211d;color:#fff;border-radius:999px;padding:11px 15px;font-size:12px;transition:.22s;max-width:calc(100% - 32px);text-align:center}.toast.show{opacity:1;transform:translate(-50%,0)}
+.hidden{display:none!important}
+@media(min-width:481px){body{padding:24px 0}.app{min-height:calc(100vh - 48px);border-radius:28px;overflow:hidden}.bottom-nav{bottom:24px;border-radius:0 0 28px 28px}}
+</style>
 </head>
 <body>
-  <div class="app">
-    <header><div class="brand"><span class="brand-mark">✓</span>Smart Basket</div><button class="icon-btn" id="storesBtn" aria-label="My Stores">⚙</button></header>
-    <main>
-      <section class="screen active" id="listScreen">
-        <h1>What do you need?</h1><p class="sub">Add items one by one or paste your whole shopping list.</p>
-        <div class="card stack">
-          <textarea id="itemInput" placeholder="e.g. milk, bread, eggs&#10;or paste one item per line"></textarea>
-          <button class="secondary" id="addBtn">＋ Add to list</button>
-        </div>
-        <div class="row space count"><span><span id="itemCount">0</span> items</span><button class="text-btn" id="clearBtn">Clear list</button></div>
-        <div class="card" id="listItems"></div>
-        <div style="height:16px"></div><button class="primary" id="findBtn">Find Cheapest</button>
-      </section>
+<div class="app">
+  <header class="topbar" id="topbar">
+    <div class="brand">
+      <div class="brand-icon">✓</div>
+      <div><div class="brand-title">Smart Basket</div><div class="brand-sub">Shop smarter. Spend less.</div></div>
+    </div>
+    <button class="header-action" id="quickStores" aria-label="My Stores">⌁</button>
+  </header>
 
-      <section class="screen" id="compareScreen">
-        <h1>Your cheapest basket</h1><p class="sub">Based on your selected stores and maximum shops.</p>
-        <div class="segment"><button class="active" data-view="recommended">Recommended</button><button data-view="one">1 store</button></div>
-        <div id="recommendedView" class="stack">
-          <div class="card recommended">
-            <span class="badge">★ RECOMMENDED · 2 STORES</span>
-            <div class="row space"><div><p class="hint">Basket total</p><p class="money">€25.20</p></div><span class="badge">Best match</span></div>
-            <p class="saving">You save €3.70</p>
-            <div style="margin-top:12px">
-              <div class="store"><span class="store-logo">ALDI</span><div><div class="store-name">ALDI</div><div class="store-items">4 items</div></div><span class="price">€16.80</span></div>
-              <div class="store"><span class="store-logo">AH</span><div><div class="store-name">Albert Heijn</div><div class="store-items">3 items</div></div><span class="price">€8.40</span></div>
-            </div>
-          </div>
-          <div class="card"><div class="row space"><div><div class="store-name">Cheapest 1-store basket</div><div class="store-items">Albert Heijn · all items</div></div><span class="price">€28.90</span></div></div>
-        </div>
-        <div id="oneView" class="stack" hidden>
-          <div class="card"><div class="row space"><div><span class="badge">CHEAPEST 1 STORE</span><h2 style="margin-top:12px">Albert Heijn</h2><p class="store-items">All items in one stop</p></div><p class="money">€28.90</p></div></div>
-          <div class="card"><div class="row space"><div><div class="store-name">ALDI</div><div class="store-items">Closest alternative</div></div><span class="price">€30.40</span></div></div>
-        </div>
-        <div style="height:16px"></div><button class="primary" id="startBtn">Start Shopping</button>
-      </section>
+  <section class="screen active" id="listScreen">
+    <h1>Your shopping list</h1>
+    <p class="sub">Type what you need, paste a list, or update a shelf price with a photo.</p>
 
-      <section class="screen" id="shopScreen">
-        <div class="shop-head"><div class="row space"><div><span class="badge" id="shopNumber">STORE 1 OF 2</span><h1 id="shopStore" style="margin-top:12px">ALDI</h1></div><strong id="shopTotal">€16.80</strong></div><p class="sub" id="shopProgressText" style="margin:8px 0 0">0 of 4 items done</p><div class="progress"><span id="progressBar" style="width:0%"></span></div></div>
-        <div class="card" id="shoppingItems"></div>
-        <div style="height:16px"></div><button class="primary" id="nextStoreBtn">Next store</button>
-      </section>
-    </main>
-    <nav class="bottom"><button class="active" data-screen="list"><span class="nav-icon">☷</span>List</button><button data-screen="compare"><span class="nav-icon">≍</span>Compare</button><button data-screen="shop"><span class="nav-icon">✓</span>Shop</button></nav>
-  </div>
+    <div class="card stack">
+      <div class="add-row">
+        <input class="text-input" id="singleItem" placeholder="Add an item…" />
+        <button class="add-btn" id="addItemBtn" aria-label="Add item">+</button>
+      </div>
+      <button class="paste-btn" id="pasteToggle">Paste multiple items</button>
+      <div id="pasteBox" class="hidden stack">
+        <textarea class="textarea" id="pasteInput" placeholder="Carrots&#10;Lemons&#10;Mayonnaise&#10;Baby wipes"></textarea>
+        <button class="secondary full" id="pasteAddBtn">Add pasted items</button>
+      </div>
+    </div>
 
-  <div class="overlay" id="storesSheet"><div class="sheet"><div class="sheet-head"><div><h2>My Stores</h2><p class="hint">Choose where Smart Basket compares.</p></div><button class="close" data-close="storesSheet">×</button></div><div id="storeChoices"></div><label class="label" for="customStore">Add a local store</label><div class="row"><input class="field" id="customStore" placeholder="e.g. Yaşar"><button class="secondary" id="addStoreBtn">Add</button></div><span class="label">Maximum shops</span><div class="maxshops" id="maxShops"><button>1</button><button class="active">2</button><button>3</button><button>Any</button></div><div style="height:18px"></div><button class="primary" data-close="storesSheet">Save</button></div></div>
-  <div class="overlay" id="priceSheet"><div class="sheet"><div class="sheet-head"><div><h2>Update Price</h2><p class="hint">Confirm what was detected from the shelf photo.</p></div><button class="close" data-close="priceSheet">×</button></div><input id="cameraInput" type="file" accept="image/*" capture="environment" hidden><button class="secondary" id="cameraBtn" style="width:100%">📷 Take shelf photo</button><label class="label" for="detectedProduct">Product</label><input class="field" id="detectedProduct"><label class="label" for="detectedPrice">Shelf price</label><input class="field" id="detectedPrice" inputmode="decimal"><label class="label" for="detectedStore">Store</label><input class="field" id="detectedStore"><p class="hint" style="margin:12px 0 18px">Please check the detected details before saving.</p><button class="primary" id="savePriceBtn">Save updated price</button></div></div>
+    <div class="row space" style="margin:18px 2px 10px">
+      <div style="font-size:14px;font-weight:800"><span id="itemCount">0</span> items</div>
+      <button class="danger-ghost" id="clearList">Clear</button>
+    </div>
+    <div class="card list-card" id="listItems"></div>
+
+    <div class="soft-card" style="margin-top:14px">
+      <div class="row space">
+        <div><div style="font-weight:800">Price different in-store?</div><div class="helper" style="margin-top:3px">Take a shelf photo and confirm the price.</div></div>
+        <button class="secondary" id="listPhotoBtn">📷</button>
+      </div>
+    </div>
+
+    <div style="height:16px"></div>
+    <button class="primary" id="findCheapest">Find Cheapest</button>
+  </section>
+
+  <section class="screen" id="compareScreen">
+    <h1>Compare your basket</h1>
+    <p class="sub">Prices from your selected stores, using the freshest reliable source.</p>
+
+    <div class="store-icons" id="compareStoreIcons"></div>
+
+    <div class="savings" style="margin-top:10px">
+      <div class="eyebrow">Recommended basket</div>
+      <div class="big">Save <span id="savingAmount">€6.34</span> <span id="savingPct">(22%)</span></div>
+      <div class="small">Total <strong id="recommendedTotalTop">€22.86</strong> vs <strong id="singleTotalTop">€29.20</strong> at the cheapest complete single store.</div>
+    </div>
+
+    <div class="segment">
+      <button class="active" data-compare="recommended">Recommended</button>
+      <button data-compare="store">By store</button>
+      <button data-compare="single">Single store</button>
+    </div>
+
+    <div id="compareRecommended">
+      <div class="card recommend">
+        <div class="recommend-tag">★ BEST PRACTICAL BASKET</div>
+        <div class="row space" style="margin-top:3px">
+          <div><div class="label-muted">2 stores · best balance</div><div class="basket-total" id="recommendedTotal">€22.86</div></div>
+          <div class="inline-info"><span class="dot-status"></span>Current</div>
+        </div>
+        <div id="recommendedStores"></div>
+      </div>
+      <p class="compare-note">Savings are compared with the cheapest complete single-store basket. Missing or uncertain prices are never silently treated as current.</p>
+    </div>
+
+    <div id="compareByStore" class="hidden card"></div>
+    <div id="compareSingle" class="hidden card"></div>
+
+    <div style="height:16px"></div>
+    <button class="primary" id="startShopping">Start Shopping</button>
+  </section>
+
+  <section class="screen" id="shopScreen">
+    <div class="shop-summary">
+      <div class="row space">
+        <div><span class="shop-badge" id="storeCounter">STORE 1 OF 2</span><div class="shop-store" id="shopStoreName">ALDI</div></div>
+        <div class="shop-total" id="shopStoreTotal">€13.10</div>
+      </div>
+      <div class="row space" style="margin-top:9px"><div class="helper" id="shopProgressText">0 of 5 items done</div><div class="helper" id="freshnessText">Updated today</div></div>
+      <div class="progress"><span id="shopProgress"></span></div>
+    </div>
+
+    <div class="section-title">Buy here</div>
+    <div class="card shop-list" id="shopItems"></div>
+
+    <div class="soft-card" style="margin-top:14px">
+      <div class="row space">
+        <div><div style="font-weight:800">📷 Price different?</div><div class="helper" style="margin-top:3px">Take a photo to update the shelf price.</div></div>
+        <button class="secondary" id="shopPhotoBtn">Update</button>
+      </div>
+    </div>
+
+    <div id="shoppingDone" class="completion">✓ Shopping complete — your list is finished.</div>
+    <div style="height:16px"></div>
+    <button class="primary" id="nextStore">Next store</button>
+  </section>
+
+  <section class="screen" id="storesScreen">
+    <h1>My Stores</h1>
+    <p class="sub">Choose the shops Smart Basket should compare and how many stops you’re willing to make.</p>
+
+    <div class="section-title">Online retailers</div>
+    <div class="card" id="storeSettings"></div>
+
+    <div class="section-title">Offline / local stores</div>
+    <div class="stack" id="localStores"></div>
+    <div class="add-store-row" style="margin-top:10px">
+      <input class="text-input" id="localStoreInput" placeholder="Add store e.g. Yaşar" />
+      <button class="secondary" id="addLocalStore">Add</button>
+    </div>
+
+    <div class="section-title">Maximum number of stores</div>
+    <div class="max-grid" id="maxStoreGrid">
+      <button data-max="1">1</button><button data-max="2" class="active">2</button><button data-max="3">3</button><button data-max="Any">Any</button>
+    </div>
+    <p class="helper" style="margin:9px 2px 0">This limits how many shops the recommended basket may use.</p>
+  </section>
+
+  <section class="screen update-screen" id="updateScreen">
+    <div class="update-header"><button class="back-btn" id="backFromUpdate">‹</button><div class="update-title">Update Price</div></div>
+    <p class="sub">Take a shelf photo, then confirm the detected product, price and size before saving.</p>
+
+    <div class="camera-box" id="cameraBox">
+      <div><div class="camera-icon">📷</div><div style="font-weight:850">Take shelf photo</div><div class="helper" style="margin-top:5px">One product / price at a time</div></div>
+    </div>
+    <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
+
+    <div class="field-label">Product</div><input class="text-input" id="detectedProduct" placeholder="e.g. Dreft Quickwash" />
+    <div class="detected-grid">
+      <div><div class="field-label">Shelf price</div><input class="text-input" id="detectedPrice" inputmode="decimal" placeholder="€ 2.49" /></div>
+      <div><div class="field-label">Size</div><input class="text-input" id="detectedSize" placeholder="520 ml" /></div>
+    </div>
+    <div class="field-label">Store</div><input class="text-input" id="detectedStore" placeholder="Store name" />
+    <div class="row space" style="margin-top:12px"><div class="inline-info"><span class="dot-status"></span><span>Source: shelf photo</span></div><div class="helper" id="detectedTime">Now</div></div>
+    <p class="confirm-note">Please confirm or correct the detected details. A fresh confirmed shelf price takes priority for this store/branch.</p>
+    <div style="height:16px"></div>
+    <button class="primary" id="saveUpdatedPrice">Use this price for this store</button>
+  </section>
+
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="active" data-screen="list"><span class="nav-ico">☷</span>List</button>
+    <button data-screen="compare"><span class="nav-ico">⌁</span>Compare</button>
+    <button data-screen="shop"><span class="nav-ico">✓</span>Shop</button>
+    <button data-screen="stores"><span class="nav-ico">⌂</span>Stores</button>
+  </nav>
   <div class="toast" id="toast"></div>
+</div>
+<script>
+const KEY='smart-basket-ux-v1';
+const retailers=[
+  {name:'Albert Heijn',short:'AH',cls:'ah'},
+  {name:'ALDI',short:'ALDI',cls:'aldi'},
+  {name:'Action',short:'A',cls:'action'},
+  {name:'Etos',short:'E',cls:'etos'},
+  {name:'Kruidvat',short:'K',cls:'kruidvat'}
+];
+const defaultItems=['Carrots 1 kg','Lemons','Mayonnaise','Black pepper','Baby wipes','Dreft','Wholegrain bread','Fruit','Gouda cheese','Slagroom'];
+const defaults={items:defaultItems,selected:['Albert Heijn','ALDI','Action','Etos','Kruidvat'],locals:['Yaşar'],maxStores:'2',checks:{},overrides:{},storeIndex:0,lastScreen:'list'};
+let state=Object.assign({},defaults,JSON.parse(localStorage.getItem(KEY)||'{}'));
+state.items=Array.isArray(state.items)?state.items:[...defaultItems];
+state.locals=Array.isArray(state.locals)?state.locals:['Yaşar'];
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+function persist(){localStorage.setItem(KEY,JSON.stringify(state));}
+function money(n){return '€'+Number(n).toFixed(2)}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.classList.remove('show'),1900)}
+function showScreen(name){state.lastScreen=name;persist();$$('.screen').forEach(s=>s.classList.toggle('active',s.id===name+'Screen'));$$('#bottomNav button').forEach(b=>b.classList.toggle('active',b.dataset.screen===name));$('#bottomNav').classList.toggle('hidden',name==='update');$('#topbar').classList.toggle('hidden',name==='update');window.scrollTo({top:0,behavior:'smooth'});if(name==='list')renderList();if(name==='compare')renderCompare();if(name==='shop')renderShop();if(name==='stores')renderStores();}
 
-  <script>
-    const KEY='smart-basket-prototype-v1';
-    const defaults={items:['Milk 1 L','Wholegrain bread','Eggs 10 pack','Bananas 1 kg','Dreft 520 ml','Gouda cheese','Baby wipes'],stores:['Albert Heijn','ALDI','Action','Etos','Kruidvat'],selected:['Albert Heijn','ALDI','Action','Etos','Kruidvat'],maxShops:'2',checks:{},prices:{},storeIndex:0};
-    let state=Object.assign({},defaults,JSON.parse(localStorage.getItem(KEY)||'{}'));
-    const shopData=[{name:'ALDI',total:'€16.80',items:['Milk 1 L','Eggs 10 pack','Bananas 1 kg','Baby wipes']},{name:'Albert Heijn',total:'€8.40',items:['Wholegrain bread','Dreft 520 ml','Gouda cheese']}];
-    const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-    function persist(){localStorage.setItem(KEY,JSON.stringify(state));}
-    function toast(message){const t=$('#toast');t.textContent=message;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
-    function showScreen(name){$$('.screen').forEach(x=>x.classList.toggle('active',x.id===name+'Screen'));$$('.bottom button').forEach(x=>x.classList.toggle('active',x.dataset.screen===name));window.scrollTo({top:0,behavior:'smooth'});if(name==='shop')renderShop();}
-    function renderList(){const box=$('#listItems');$('#itemCount').textContent=state.items.length;box.innerHTML=state.items.length?'':'<div class="empty">Your shopping list is empty.</div>';state.items.forEach((name,i)=>{const el=document.createElement('div');el.className='item';el.innerHTML='<span class="dot">🛒</span><span class="item-name"></span><button class="remove" aria-label="Remove item">×</button>';el.querySelector('.item-name').textContent=name;el.querySelector('button').onclick=()=>{state.items.splice(i,1);persist();renderList()};box.appendChild(el)});}
-    function addItems(){const values=$('#itemInput').value.split(/\n|,/).map(x=>x.trim()).filter(Boolean);if(!values.length)return;state.items.push(...values);$('#itemInput').value='';persist();renderList();toast(values.length===1?'Item added':values.length+' items added');}
-    function renderStores(){const box=$('#storeChoices');box.innerHTML='';state.stores.forEach(name=>{const row=document.createElement('label');row.className='choice';row.innerHTML='<span></span><input type="checkbox">';row.querySelector('span').textContent=name;const input=row.querySelector('input');input.checked=state.selected.includes(name);input.onchange=()=>{state.selected=input.checked?[...new Set([...state.selected,name])]:state.selected.filter(x=>x!==name);persist()};box.appendChild(row)});$$('#maxShops button').forEach(b=>b.classList.toggle('active',b.textContent===state.maxShops));}
-    function renderShop(){const si=Math.min(state.storeIndex,shopData.length-1),store=shopData[si],box=$('#shoppingItems');$('#shopNumber').textContent='STORE '+(si+1)+' OF '+shopData.length;$('#shopStore').textContent=store.name;$('#shopTotal').textContent=store.total;box.innerHTML='';store.items.forEach(name=>{const id=store.name+'|'+name,row=document.createElement('div');row.className='check-row'+(state.checks[id]?' checked':'');const shown=state.prices[id]?'€'+Number(state.prices[id]).toFixed(2):({ALDI:'€4.20','Albert Heijn':'€2.80'}[store.name]);row.innerHTML='<div class="check-line"><input type="checkbox"><div><div class="product"></div><div class="meta">Expected '+shown+' · Website price · updated today</div></div><strong>'+shown+'</strong></div><button class="photo">📷 Price different?</button>';row.querySelector('.product').textContent=name;const cb=row.querySelector('input');cb.checked=!!state.checks[id];cb.onchange=()=>{state.checks[id]=cb.checked;persist();renderShop()};row.querySelector('.photo').onclick=()=>openPrice(name,store.name,id);box.appendChild(row)});const done=store.items.filter(n=>state.checks[store.name+'|'+n]).length;$('#shopProgressText').textContent=done+' of '+store.items.length+' items done';$('#progressBar').style.width=(done/store.items.length*100)+'%';$('#nextStoreBtn').textContent=si===shopData.length-1?'Finish shopping':'Next store';}
-    let priceTarget='';
-    function openPrice(product,store,id){priceTarget=id;$('#detectedProduct').value=product;$('#detectedStore').value=store;$('#detectedPrice').value=state.prices[id]||'';$('#priceSheet').classList.add('open');}
-    $('#addBtn').onclick=addItems;$('#itemInput').addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='Enter')addItems()});$('#clearBtn').onclick=()=>{state.items=[];persist();renderList()};$('#findBtn').onclick=()=>state.items.length?showScreen('compare'):toast('Add at least one item first');$('#startBtn').onclick=()=>{state.storeIndex=0;persist();showScreen('shop')};$('#storesBtn').onclick=()=>{renderStores();$('#storesSheet').classList.add('open')};
-    $$('.bottom button').forEach(b=>b.onclick=()=>showScreen(b.dataset.screen));$$('[data-close]').forEach(b=>b.onclick=()=>$('#'+b.dataset.close).classList.remove('open'));
-    $$('.segment button').forEach(b=>b.onclick=()=>{$$('.segment button').forEach(x=>x.classList.toggle('active',x===b));$('#recommendedView').hidden=b.dataset.view!=='recommended';$('#oneView').hidden=b.dataset.view!=='one'});
-    $$('#maxShops button').forEach(b=>b.onclick=()=>{state.maxShops=b.textContent;persist();renderStores()});$('#addStoreBtn').onclick=()=>{const name=$('#customStore').value.trim();if(!name)return;if(!state.stores.includes(name))state.stores.push(name);if(!state.selected.includes(name))state.selected.push(name);$('#customStore').value='';persist();renderStores()};
-    $('#nextStoreBtn').onclick=()=>{if(state.storeIndex<shopData.length-1){state.storeIndex++;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}else{const totalItems=shopData.reduce((n,s)=>n+s.items.length,0);const checked=shopData.reduce((n,s)=>n+s.items.filter(item=>state.checks[s.name+'|'+item]).length,0);$('#shopScreen').innerHTML='<div style="padding:36px 4px 110px;text-align:center"><div style="width:78px;height:78px;margin:8px auto 18px;border-radius:50%;display:grid;place-items:center;background:#e8f5ef;color:#0b7a53;font-size:42px;font-weight:900">✓</div><h1 style="margin-bottom:8px">Shopping complete</h1><p class="sub" style="margin-bottom:22px">'+checked+' of '+totalItems+' items checked across '+shopData.length+' stores.</p><div class="card" style="text-align:left;margin-bottom:16px"><div class="row space" style="padding:4px 0 12px"><span>Basket total</span><strong>€25.20</strong></div><div class="row space" style="padding:12px 0;border-top:1px solid #dfe6e2"><span>Stores visited</span><strong>2</strong></div><div class="row space" style="padding:12px 0 4px;border-top:1px solid #dfe6e2"><span>Saved vs 1 store</span><strong style="color:#0b7a53">€3.70</strong></div></div><button class="primary" id="newListBtn">Start a new list</button><button class="secondary" id="reviewTripBtn" style="width:100%;margin-top:10px">Review shopping</button></div>';$('#newListBtn').onclick=()=>{state.items=[];state.checks={};state.storeIndex=0;persist();renderList();showScreen('list')};$('#reviewTripBtn').onclick=()=>{state.storeIndex=shopData.length-1;persist();renderShop()};window.scrollTo({top:0,behavior:'smooth'})}};
-    $('#cameraBtn').onclick=()=>$('#cameraInput').click();$('#cameraInput').onchange=()=>{if($('#cameraInput').files.length){toast('Photo ready — confirm the details');if(!$('#detectedPrice').value)$('#detectedPrice').value='2.49'}};
-    $('#savePriceBtn').onclick=()=>{const p=parseFloat($('#detectedPrice').value.replace(',','.'));if(!Number.isFinite(p)||p<=0){toast('Enter a valid shelf price');return}state.prices[priceTarget]=p;persist();$('#priceSheet').classList.remove('open');renderShop();toast('Shopping price updated')};
-    renderList();renderStores();renderShop();
-  </script>
+function addItem(text){const v=text.trim();if(!v)return;state.items.push(v);persist();renderList();}
+function renderList(){
+  $('#itemCount').textContent=state.items.length;
+  const box=$('#listItems');box.innerHTML='';
+  if(!state.items.length){box.innerHTML='<div style="padding:26px 10px;text-align:center;color:#738078">Your list is empty.</div>';return}
+  state.items.forEach((name,i)=>{const row=document.createElement('div');row.className='list-item';row.innerHTML='<div class="item-icon">🛒</div><div><div class="item-name"></div><div class="item-meta">Quantity / size optional</div></div><button class="remove">×</button>';row.querySelector('.item-name').textContent=name;row.querySelector('.remove').onclick=()=>{state.items.splice(i,1);persist();renderList()};box.appendChild(row)});
+}
+
+function getStorePlan(){
+  const items=state.items.length?state.items:defaultItems;
+  const split=Math.max(1,Math.ceil(items.length*.56));
+  const a=items.slice(0,split), b=items.slice(split);
+  const storeA={name:'ALDI',short:'ALDI',cls:'aldi',items:a};
+  const storeB={name:'Albert Heijn',short:'AH',cls:'ah',items:b.length?b:[items[items.length-1]]};
+  const priceFor=(name,store)=>{
+    const id=store+'|'+name;if(state.overrides[id])return Number(state.overrides[id]);
+    const low=name.toLowerCase();
+    const map={carrots:.79,lemons:1.29,mayonnaise:.75,'black pepper':.88,'baby wipes':1.49,dreft:.99,'wholegrain bread':.93,fruit:1.95,'gouda cheese':4.99,slagroom:.99};
+    let v=Object.entries(map).find(([k])=>low.includes(k))?.[1];
+    if(v==null)v=1.75;
+    if(store==='Albert Heijn')v*=1.08;
+    if(store==='Action'&&low.includes('dreft'))v=.99;
+    return Number(v.toFixed(2));
+  };
+  [storeA,storeB].forEach(s=>{s.total=Number(s.items.reduce((sum,n)=>sum+priceFor(n,s.name),0).toFixed(2));s.priceFor=priceFor});
+  const recommended=Number((storeA.total+storeB.total).toFixed(2));
+  const single=Number((recommended*1.24).toFixed(2));
+  return {stores:[storeA,storeB],recommended,single,saving:Number((single-recommended).toFixed(2)),pct:Math.round((single-recommended)/single*100),priceFor};
+}
+
+function renderCompare(){
+  const icons=$('#compareStoreIcons');icons.innerHTML='';retailers.forEach(r=>{const el=document.createElement('div');el.className='store-pill';el.innerHTML='<span class="logo-dot '+r.cls+'">'+r.short+'</span>'+r.name;icons.appendChild(el)});
+  const p=getStorePlan();$('#savingAmount').textContent=money(p.saving);$('#savingPct').textContent='('+p.pct+'%)';$('#recommendedTotalTop').textContent=money(p.recommended);$('#singleTotalTop').textContent=money(p.single);$('#recommendedTotal').textContent=money(p.recommended);
+  const rs=$('#recommendedStores');rs.innerHTML='';p.stores.forEach(s=>{const d=document.createElement('div');d.className='store-break';d.innerHTML='<span class="logo-dot '+s.cls+'">'+s.short+'</span><div><div style="font-weight:850">'+s.name+'</div><div class="count">'+s.items.length+' items</div></div><div class="price">'+money(s.total)+'</div>';rs.appendChild(d)});
+  const by=$('#compareByStore');by.innerHTML='';[
+    {name:'Albert Heijn',sub:'Complete basket',price:p.single},
+    {name:'ALDI',sub:'Most items · some equivalents',price:p.single+1.20},
+    {name:'Action',sub:'Partial basket only',price:Math.max(4.5,p.recommended*.34)},
+    {name:'Etos',sub:'Partial basket only',price:Math.max(5.2,p.recommended*.37)},
+    {name:'Kruidvat',sub:'Partial basket only',price:Math.max(5.4,p.recommended*.39)}
+  ].forEach(x=>{const r=document.createElement('div');r.className='mini-row row space';r.innerHTML='<div><div class="mini-title">'+x.name+'</div><div class="mini-sub">'+x.sub+'</div></div><div class="mini-price">'+money(x.price)+'</div>';by.appendChild(r)});
+  $('#compareSingle').innerHTML='<div class="row space"><div><div class="label-muted">CHEAPEST COMPLETE SINGLE STORE</div><div style="font-size:22px;font-weight:900;margin-top:5px">Albert Heijn</div><div class="mini-sub" style="margin-top:5px">1 stop · all items priced</div></div><div class="basket-total" style="font-size:28px">'+money(p.single)+'</div></div><div class="soft-card" style="margin-top:14px"><div class="row space"><span>Extra vs recommended</span><strong>'+money(p.saving)+'</strong></div></div>';
+}
+
+function renderShop(){
+  const p=getStorePlan();state.storeIndex=Math.min(state.storeIndex,p.stores.length-1);const s=p.stores[state.storeIndex];
+  $('#storeCounter').textContent='STORE '+(state.storeIndex+1)+' OF '+p.stores.length;$('#shopStoreName').textContent=s.name;$('#shopStoreTotal').textContent=money(s.total);$('#freshnessText').textContent='Updated today';
+  const box=$('#shopItems');box.innerHTML='';
+  s.items.forEach(name=>{const id=s.name+'|'+name,price=p.priceFor(name,s.name),row=document.createElement('div');row.className='check-row'+(state.checks[id]?' checked':'');row.innerHTML='<div class="check-main"><input type="checkbox"><div><div class="product"></div><div class="product-meta">Expected '+money(price)+'</div><div class="source-row"><span class="dot-status"></span><span>Website price · updated today</span></div></div><div class="product-price">'+money(price)+'</div></div><button class="photo-link">📷 Price different?</button>';row.querySelector('.product').textContent=name;const cb=row.querySelector('input');cb.checked=!!state.checks[id];cb.onchange=()=>{state.checks[id]=cb.checked;persist();renderShop()};row.querySelector('.photo-link').onclick=()=>openUpdate({product:name,store:s.name,size:'',price:price,id});box.appendChild(row)});
+  const done=s.items.filter(n=>state.checks[s.name+'|'+n]).length;$('#shopProgressText').textContent=done+' of '+s.items.length+' items done';$('#shopProgress').style.width=(done/s.items.length*100)+'%';
+  const final=state.storeIndex===p.stores.length-1;$('#nextStore').textContent=final?'Finish shopping':'Next store';$('#shoppingDone').classList.remove('show');$('#nextStore').disabled=false;$('#nextStore').style.opacity='1';
+}
+
+function storeLogoFor(name){return retailers.find(r=>r.name===name)||{short:name.slice(0,2).toUpperCase(),cls:'yasar'}}
+function renderStores(){
+  const box=$('#storeSettings');box.innerHTML='';retailers.forEach(r=>{const row=document.createElement('div');row.className='store-setting';row.innerHTML='<div class="store-left"><span class="logo-dot '+r.cls+'">'+r.short+'</span><div><div style="font-weight:820">'+r.name+'</div><div class="helper">Online prices</div></div></div><label class="switch"><input type="checkbox"><span class="slider"></span></label>';const input=row.querySelector('input');input.checked=state.selected.includes(r.name);input.onchange=()=>{state.selected=input.checked?[...new Set([...state.selected,r.name])]:state.selected.filter(x=>x!==r.name);persist()};box.appendChild(row)});
+  const locals=$('#localStores');locals.innerHTML='';state.locals.forEach((name,i)=>{const r=storeLogoFor(name),el=document.createElement('div');el.className='local-store';el.innerHTML='<div class="store-left"><span class="logo-dot '+r.cls+'">'+r.short+'</span><div><div style="font-weight:820">'+name+'</div><div class="helper">Shelf photo prices</div></div></div><button class="remove">×</button>';el.querySelector('.remove').onclick=()=>{state.locals.splice(i,1);persist();renderStores()};locals.appendChild(el)});
+  $$('#maxStoreGrid button').forEach(b=>b.classList.toggle('active',b.dataset.max===state.maxStores));
+}
+
+let updateContext={id:null,returnTo:'list'};
+function openUpdate(ctx={}){updateContext={id:ctx.id||null,returnTo:ctx.returnTo||state.lastScreen||'list'};$('#detectedProduct').value=ctx.product||'';$('#detectedStore').value=ctx.store||'';$('#detectedPrice').value=ctx.price?Number(ctx.price).toFixed(2):'';$('#detectedSize').value=ctx.size||'';$('#detectedTime').textContent='Now';showScreen('update')}
+
+$('#addItemBtn').onclick=()=>{const i=$('#singleItem');if(!i.value.trim())return;addItem(i.value);i.value='';toast('Item added')};
+$('#singleItem').addEventListener('keydown',e=>{if(e.key==='Enter')$('#addItemBtn').click()});
+$('#pasteToggle').onclick=()=>$('#pasteBox').classList.toggle('hidden');
+$('#pasteAddBtn').onclick=()=>{const vals=$('#pasteInput').value.split(/\n|,/).map(v=>v.trim()).filter(Boolean);if(!vals.length)return;state.items.push(...vals);$('#pasteInput').value='';persist();renderList();toast(vals.length+' items added')};
+$('#clearList').onclick=()=>{state.items=[];persist();renderList()};
+$('#findCheapest').onclick=()=>state.items.length?showScreen('compare'):toast('Add at least one item');
+$('#listPhotoBtn').onclick=()=>openUpdate({returnTo:'list'});
+$('#quickStores').onclick=()=>showScreen('stores');
+$$('#bottomNav button').forEach(b=>b.onclick=()=>showScreen(b.dataset.screen));
+$$('.segment button').forEach(b=>b.onclick=()=>{ $$('.segment button').forEach(x=>x.classList.toggle('active',x===b));$('#compareRecommended').classList.toggle('hidden',b.dataset.compare!=='recommended');$('#compareByStore').classList.toggle('hidden',b.dataset.compare!=='store');$('#compareSingle').classList.toggle('hidden',b.dataset.compare!=='single')});
+$('#startShopping').onclick=()=>{state.storeIndex=0;persist();showScreen('shop')};
+$('#nextStore').onclick=()=>{const p=getStorePlan();if(state.storeIndex<p.stores.length-1){state.storeIndex++;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}else{$('#shoppingDone').classList.add('show');$('#nextStore').textContent='Shopping completed ✓';$('#nextStore').disabled=true;$('#nextStore').style.opacity='.65';toast('Shopping complete')}};
+$('#shopPhotoBtn').onclick=()=>{const p=getStorePlan(),s=p.stores[state.storeIndex];openUpdate({store:s.name,returnTo:'shop'})};
+$('#backFromUpdate').onclick=()=>showScreen(updateContext.returnTo||'list');
+$('#cameraBox').onclick=()=>$('#cameraInput').click();
+$('#cameraInput').onchange=()=>{if($('#cameraInput').files.length){if(!$('#detectedPrice').value)$('#detectedPrice').value='2.49';if(!$('#detectedSize').value)$('#detectedSize').value='520 ml';toast('Photo ready — confirm details')}};
+$('#saveUpdatedPrice').onclick=()=>{const p=parseFloat($('#detectedPrice').value.replace(',','.'));if(!Number.isFinite(p)||p<=0){toast('Enter a valid price');return}const product=$('#detectedProduct').value.trim(),store=$('#detectedStore').value.trim();if(!product||!store){toast('Confirm product and store');return}const id=updateContext.id||store+'|'+product;state.overrides[id]=p;persist();toast('Shelf price saved');showScreen(updateContext.returnTo||'list')};
+$('#addLocalStore').onclick=()=>{const v=$('#localStoreInput').value.trim();if(!v)return;if(!state.locals.includes(v))state.locals.push(v);$('#localStoreInput').value='';persist();renderStores()};
+$$('#maxStoreGrid button').forEach(b=>b.onclick=()=>{state.maxStores=b.dataset.max;persist();renderStores()});
+
+renderList();renderStores();renderCompare();renderShop();showScreen(state.lastScreen==='update'?'list':state.lastScreen||'list');
+</script>
 </body>
 </html>
