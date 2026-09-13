@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b7a53">
+  <title>Smart Basket</title>
+  <style>
+    :root { --green:#0b7a53; --green-2:#e8f5ef; --ink:#17211d; --muted:#66716c; --line:#dfe6e2; --paper:#fff; --bg:#f4f7f5; --orange:#f3982e; --danger:#b23a3a; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; min-height:100%; background:var(--bg); color:var(--ink); font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button,input,textarea { font:inherit; }
+    button { cursor:pointer; }
+    .app { width:min(100%,480px); min-height:100vh; margin:0 auto; background:var(--paper); box-shadow:0 0 40px rgba(23,33,29,.08); padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
+    header { position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; min-height:72px; padding:calc(10px + env(safe-area-inset-top)) 20px 10px; background:rgba(255,255,255,.96); border-bottom:1px solid var(--line); }
+    .brand { display:flex; align-items:center; gap:10px; font-weight:800; font-size:21px; }
+    .brand-mark { width:34px; height:34px; display:grid; place-items:center; border-radius:11px; background:var(--green); color:#fff; font-size:19px; }
+    .icon-btn { width:42px; height:42px; border:0; border-radius:50%; background:var(--green-2); color:var(--green); font-size:20px; }
+    main { padding:22px 18px; }
+    h1 { font-size:28px; line-height:1.1; margin:0 0 8px; }
+    h2 { font-size:20px; margin:0; }
+    p { margin:0; }
+    .sub { color:var(--muted); line-height:1.45; margin-bottom:20px; }
+    .card { border:1px solid var(--line); border-radius:18px; background:#fff; padding:16px; box-shadow:0 6px 18px rgba(23,33,29,.04); }
+    .stack { display:grid; gap:12px; }
+    .row { display:flex; align-items:center; gap:10px; }
+    .space { justify-content:space-between; }
+    textarea { width:100%; min-height:96px; resize:vertical; border:1.5px solid #bdc9c3; border-radius:14px; padding:14px; outline:none; }
+    textarea:focus,input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(11,122,83,.12); outline:none; }
+    .primary { width:100%; min-height:52px; border:0; border-radius:14px; padding:0 18px; background:var(--green); color:#fff; font-weight:750; }
+    .secondary { min-height:44px; border:1px solid var(--line); border-radius:12px; padding:0 14px; background:#fff; color:var(--ink); font-weight:650; }
+    .text-btn { border:0; background:none; color:var(--green); font-weight:700; padding:8px 0; }
+    .hint { color:var(--muted); font-size:13px; }
+    .item { display:flex; align-items:center; min-height:56px; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); }
+    .item:last-child { border-bottom:0; }
+    .dot { width:34px; height:34px; flex:0 0 34px; display:grid; place-items:center; border-radius:10px; background:var(--green-2); }
+    .item-name { flex:1; font-weight:650; }
+    .remove { border:0; background:none; color:#89938e; font-size:22px; padding:6px; }
+    .count { margin:18px 0 10px; font-weight:750; }
+    .segment { display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:4px; padding:4px; margin:18px 0; border-radius:13px; background:#edf1ef; }
+    .segment button { min-height:40px; border:0; border-radius:10px; color:var(--muted); background:transparent; font-weight:700; }
+    .segment button.active { color:var(--ink); background:#fff; box-shadow:0 2px 8px rgba(23,33,29,.1); }
+    .recommended { border:2px solid var(--green); position:relative; padding-top:22px; }
+    .badge { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 10px; background:var(--green-2); color:var(--green); font-size:12px; font-weight:800; }
+    .recommended>.badge { position:absolute; top:-14px; left:16px; background:var(--green); color:#fff; }
+    .money { font-size:31px; font-weight:850; letter-spacing:-.6px; }
+    .saving { color:var(--green); font-weight:800; }
+    .store { display:grid; grid-template-columns:42px 1fr auto; gap:11px; align-items:center; padding:13px 0; border-bottom:1px solid var(--line); }
+    .store:last-child { border-bottom:0; }
+    .store-logo { width:40px; height:40px; display:grid; place-items:center; border-radius:11px; background:#eef3f0; font-size:12px; font-weight:850; }
+    .store-name { font-weight:750; }
+    .store-items { color:var(--muted); font-size:13px; margin-top:3px; }
+    .price { font-weight:800; }
+    .shop-head { margin-bottom:16px; }
+    .progress { height:8px; overflow:hidden; border-radius:999px; background:#e8eeeb; margin-top:13px; }
+    .progress span { display:block; height:100%; background:var(--green); transition:width .2s; }
+    .check-row { padding:14px 0; border-bottom:1px solid var(--line); }
+    .check-line { display:grid; grid-template-columns:28px 1fr auto; gap:10px; align-items:start; }
+    .check-line input { width:23px; height:23px; accent-color:var(--green); }
+    .checked .product { text-decoration:line-through; color:#8b948f; }
+    .product { font-weight:700; }
+    .meta { color:var(--muted); font-size:12px; margin-top:5px; line-height:1.4; }
+    .photo { margin:8px 0 0 38px; border:0; background:none; color:var(--green); font-size:13px; font-weight:750; padding:3px 0; }
+    .bottom { position:fixed; z-index:20; bottom:0; left:50%; transform:translateX(-50%); width:min(100%,480px); display:grid; grid-template-columns:repeat(3,1fr); padding:9px 10px calc(9px + env(safe-area-inset-bottom)); background:rgba(255,255,255,.97); border-top:1px solid var(--line); }
+    .bottom button { border:0; background:none; color:#818b86; font-size:12px; font-weight:700; padding:7px; }
+    .bottom button.active { color:var(--green); }
+    .nav-icon { display:block; font-size:22px; margin-bottom:3px; }
+    .screen { display:none; }
+    .screen.active { display:block; }
+    .empty { text-align:center; color:var(--muted); padding:32px 12px; }
+    .overlay { position:fixed; inset:0; z-index:50; display:none; align-items:flex-end; justify-content:center; background:rgba(9,20,15,.45); }
+    .overlay.open { display:flex; }
+    .sheet { width:min(100%,480px); max-height:88vh; overflow:auto; border-radius:24px 24px 0 0; background:#fff; padding:22px 18px calc(22px + env(safe-area-inset-bottom)); }
+    .sheet-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+    .close { border:0; background:#edf2ef; width:38px; height:38px; border-radius:50%; font-size:20px; }
+    .choice { display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-bottom:1px solid var(--line); }
+    .choice input { width:21px; height:21px; accent-color:var(--green); }
+    .label { display:block; margin:14px 0 7px; font-size:13px; font-weight:800; }
+    .field { width:100%; min-height:46px; border:1.5px solid #bdc9c3; border-radius:12px; padding:0 12px; }
+    .maxshops { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; }
+    .maxshops button { min-height:42px; border:1px solid var(--line); border-radius:11px; background:#fff; font-weight:700; }
+    .maxshops button.active { border-color:var(--green); background:var(--green-2); color:var(--green); }
+    .toast { position:fixed; z-index:80; left:50%; bottom:104px; transform:translate(-50%,18px); width:max-content; max-width:calc(100% - 36px); opacity:0; pointer-events:none; border-radius:999px; padding:11px 16px; background:#17211d; color:#fff; font-size:13px; transition:.2s; }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    @media (min-width:481px) { body { padding:24px 0; } .app { min-height:calc(100vh - 48px); border-radius:28px; overflow:hidden; } .bottom { bottom:24px; border-radius:0 0 28px 28px; } .overlay { align-items:center; } .sheet { border-radius:24px; max-height:80vh; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header><div class="brand"><span class="brand-mark">✓</span>Smart Basket</div><button class="icon-btn" id="storesBtn" aria-label="My Stores">⚙</button></header>
+    <main>
+      <section class="screen active" id="listScreen">
+        <h1>What do you need?</h1><p class="sub">Add items one by one or paste your whole shopping list.</p>
+        <div class="card stack">
+          <textarea id="itemInput" placeholder="e.g. milk, bread, eggs&#10;or paste one item per line"></textarea>
+          <button class="secondary" id="addBtn">＋ Add to list</button>
+        </div>
+        <div class="row space count"><span><span id="itemCount">0</span> items</span><button class="text-btn" id="clearBtn">Clear list</button></div>
+        <div class="card" id="listItems"></div>
+        <div style="height:16px"></div><button class="primary" id="findBtn">Find Cheapest</button>
+      </section>
+
+      <section class="screen" id="compareScreen">
+        <h1>Your cheapest basket</h1><p class="sub">Based on your selected stores and maximum shops.</p>
+        <div class="segment"><button class="active" data-view="recommended">Recommended</button><button data-view="one">1 store</button></div>
+        <div id="recommendedView" class="stack">
+          <div class="card recommended">
+            <span class="badge">★ RECOMMENDED · 2 STORES</span>
+            <div class="row space"><div><p class="hint">Basket total</p><p class="money">€25.20</p></div><span class="badge">Best match</span></div>
+            <p class="saving">You save €3.70</p>
+            <div style="margin-top:12px">
+              <div class="store"><span class="store-logo">ALDI</span><div><div class="store-name">ALDI</div><div class="store-items">4 items</div></div><span class="price">€16.80</span></div>
+              <div class="store"><span class="store-logo">AH</span><div><div class="store-name">Albert Heijn</div><div class="store-items">3 items</div></div><span class="price">€8.40</span></div>
+            </div>
+          </div>
+          <div class="card"><div class="row space"><div><div class="store-name">Cheapest 1-store basket</div><div class="store-items">Albert Heijn · all items</div></div><span class="price">€28.90</span></div></div>
+        </div>
+        <div id="oneView" class="stack" hidden>
+          <div class="card"><div class="row space"><div><span class="badge">CHEAPEST 1 STORE</span><h2 style="margin-top:12px">Albert Heijn</h2><p class="store-items">All items in one stop</p></div><p class="money">€28.90</p></div></div>
+          <div class="card"><div class="row space"><div><div class="store-name">ALDI</div><div class="store-items">Closest alternative</div></div><span class="price">€30.40</span></div></div>
+        </div>
+        <div style="height:16px"></div><button class="primary" id="startBtn">Start Shopping</button>
+      </section>
+
+      <section class="screen" id="shopScreen">
+        <div class="shop-head"><div class="row space"><div><span class="badge" id="shopNumber">STORE 1 OF 2</span><h1 id="shopStore" style="margin-top:12px">ALDI</h1></div><strong id="shopTotal">€16.80</strong></div><p class="sub" id="shopProgressText" style="margin:8px 0 0">0 of 4 items done</p><div class="progress"><span id="progressBar" style="width:0%"></span></div></div>
+        <div class="card" id="shoppingItems"></div>
+        <div style="height:16px"></div><button class="primary" id="nextStoreBtn">Next store</button>
+      </section>
+    </main>
+    <nav class="bottom"><button class="active" data-screen="list"><span class="nav-icon">☷</span>List</button><button data-screen="compare"><span class="nav-icon">≍</span>Compare</button><button data-screen="shop"><span class="nav-icon">✓</span>Shop</button></nav>
+  </div>
+
+  <div class="overlay" id="storesSheet"><div class="sheet"><div class="sheet-head"><div><h2>My Stores</h2><p class="hint">Choose where Smart Basket compares.</p></div><button class="close" data-close="storesSheet">×</button></div><div id="storeChoices"></div><label class="label" for="customStore">Add a local store</label><div class="row"><input class="field" id="customStore" placeholder="e.g. Yaşar"><button class="secondary" id="addStoreBtn">Add</button></div><span class="label">Maximum shops</span><div class="maxshops" id="maxShops"><button>1</button><button class="active">2</button><button>3</button><button>Any</button></div><div style="height:18px"></div><button class="primary" data-close="storesSheet">Save</button></div></div>
+  <div class="overlay" id="priceSheet"><div class="sheet"><div class="sheet-head"><div><h2>Update Price</h2><p class="hint">Confirm what was detected from the shelf photo.</p></div><button class="close" data-close="priceSheet">×</button></div><input id="cameraInput" type="file" accept="image/*" capture="environment" hidden><button class="secondary" id="cameraBtn" style="width:100%">📷 Take shelf photo</button><label class="label" for="detectedProduct">Product</label><input class="field" id="detectedProduct"><label class="label" for="detectedPrice">Shelf price</label><input class="field" id="detectedPrice" inputmode="decimal"><label class="label" for="detectedStore">Store</label><input class="field" id="detectedStore"><p class="hint" style="margin:12px 0 18px">Please check the detected details before saving.</p><button class="primary" id="savePriceBtn">Save updated price</button></div></div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const KEY='smart-basket-prototype-v1';
+    const defaults={items:['Milk 1 L','Wholegrain bread','Eggs 10 pack','Bananas 1 kg','Dreft 520 ml','Gouda cheese','Baby wipes'],stores:['Albert Heijn','ALDI','Action','Etos','Kruidvat'],selected:['Albert Heijn','ALDI','Action','Etos','Kruidvat'],maxShops:'2',checks:{},prices:{},storeIndex:0};
+    let state=Object.assign({},defaults,JSON.parse(localStorage.getItem(KEY)||'{}'));
+    const shopData=[{name:'ALDI',total:'€16.80',items:['Milk 1 L','Eggs 10 pack','Bananas 1 kg','Baby wipes']},{name:'Albert Heijn',total:'€8.40',items:['Wholegrain bread','Dreft 520 ml','Gouda cheese']}];
+    const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+    function persist(){localStorage.setItem(KEY,JSON.stringify(state));}
+    function toast(message){const t=$('#toast');t.textContent=message;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
+    function showScreen(name){$$('.screen').forEach(x=>x.classList.toggle('active',x.id===name+'Screen'));$$('.bottom button').forEach(x=>x.classList.toggle('active',x.dataset.screen===name));window.scrollTo({top:0,behavior:'smooth'});if(name==='shop')renderShop();}
+    function renderList(){const box=$('#listItems');$('#itemCount').textContent=state.items.length;box.innerHTML=state.items.length?'':'<div class="empty">Your shopping list is empty.</div>';state.items.forEach((name,i)=>{const el=document.createElement('div');el.className='item';el.innerHTML='<span class="dot">🛒</span><span class="item-name"></span><button class="remove" aria-label="Remove item">×</button>';el.querySelector('.item-name').textContent=name;el.querySelector('button').onclick=()=>{state.items.splice(i,1);persist();renderList()};box.appendChild(el)});}
+    function addItems(){const values=$('#itemInput').value.split(/\n|,/).map(x=>x.trim()).filter(Boolean);if(!values.length)return;state.items.push(...values);$('#itemInput').value='';persist();renderList();toast(values.length===1?'Item added':values.length+' items added');}
+    function renderStores(){const box=$('#storeChoices');box.innerHTML='';state.stores.forEach(name=>{const row=document.createElement('label');row.className='choice';row.innerHTML='<span></span><input type="checkbox">';row.querySelector('span').textContent=name;const input=row.querySelector('input');input.checked=state.selected.includes(name);input.onchange=()=>{state.selected=input.checked?[...new Set([...state.selected,name])]:state.selected.filter(x=>x!==name);persist()};box.appendChild(row)});$$('#maxShops button').forEach(b=>b.classList.toggle('active',b.textContent===state.maxShops));}
+    function renderShop(){const si=Math.min(state.storeIndex,shopData.length-1),store=shopData[si],box=$('#shoppingItems');$('#shopNumber').textContent='STORE '+(si+1)+' OF '+shopData.length;$('#shopStore').textContent=store.name;$('#shopTotal').textContent=store.total;box.innerHTML='';store.items.forEach(name=>{const id=store.name+'|'+name,row=document.createElement('div');row.className='check-row'+(state.checks[id]?' checked':'');const shown=state.prices[id]?'€'+Number(state.prices[id]).toFixed(2):({ALDI:'€4.20','Albert Heijn':'€2.80'}[store.name]);row.innerHTML='<div class="check-line"><input type="checkbox"><div><div class="product"></div><div class="meta">Expected '+shown+' · Website price · updated today</div></div><strong>'+shown+'</strong></div><button class="photo">📷 Price different?</button>';row.querySelector('.product').textContent=name;const cb=row.querySelector('input');cb.checked=!!state.checks[id];cb.onchange=()=>{state.checks[id]=cb.checked;persist();renderShop()};row.querySelector('.photo').onclick=()=>openPrice(name,store.name,id);box.appendChild(row)});const done=store.items.filter(n=>state.checks[store.name+'|'+n]).length;$('#shopProgressText').textContent=done+' of '+store.items.length+' items done';$('#progressBar').style.width=(done/store.items.length*100)+'%';$('#nextStoreBtn').textContent=si===shopData.length-1?'Finish shopping':'Next store';}
+    let priceTarget='';
+    function openPrice(product,store,id){priceTarget=id;$('#detectedProduct').value=product;$('#detectedStore').value=store;$('#detectedPrice').value=state.prices[id]||'';$('#priceSheet').classList.add('open');}
+    $('#addBtn').onclick=addItems;$('#itemInput').addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='Enter')addItems()});$('#clearBtn').onclick=()=>{state.items=[];persist();renderList()};$('#findBtn').onclick=()=>state.items.length?showScreen('compare'):toast('Add at least one item first');$('#startBtn').onclick=()=>{state.storeIndex=0;persist();showScreen('shop')};$('#storesBtn').onclick=()=>{renderStores();$('#storesSheet').classList.add('open')};
+    $$('.bottom button').forEach(b=>b.onclick=()=>showScreen(b.dataset.screen));$$('[data-close]').forEach(b=>b.onclick=()=>$('#'+b.dataset.close).classList.remove('open'));
+    $$('.segment button').forEach(b=>b.onclick=()=>{$$('.segment button').forEach(x=>x.classList.toggle('active',x===b));$('#recommendedView').hidden=b.dataset.view!=='recommended';$('#oneView').hidden=b.dataset.view!=='one'});
+    $$('#maxShops button').forEach(b=>b.onclick=()=>{state.maxShops=b.textContent;persist();renderStores()});$('#addStoreBtn').onclick=()=>{const name=$('#customStore').value.trim();if(!name)return;if(!state.stores.includes(name))state.stores.push(name);if(!state.selected.includes(name))state.selected.push(name);$('#customStore').value='';persist();renderStores()};
+    $('#nextStoreBtn').onclick=()=>{if(state.storeIndex<shopData.length-1){state.storeIndex++;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}else toast('Shopping complete')};
+    $('#cameraBtn').onclick=()=>$('#cameraInput').click();$('#cameraInput').onchange=()=>{if($('#cameraInput').files.length){toast('Photo ready — confirm the details');if(!$('#detectedPrice').value)$('#detectedPrice').value='2.49'}};
+    $('#savePriceBtn').onclick=()=>{const p=parseFloat($('#detectedPrice').value.replace(',','.'));if(!Number.isFinite(p)||p<=0){toast('Enter a valid shelf price');return}state.prices[priceTarget]=p;persist();$('#priceSheet').classList.remove('open');renderShop();toast('Shopping price updated')};
+    renderList();renderStores();renderShop();
+  </script>
+</body>
+</html>
