@@ -1,0 +1,138 @@
+name: Add automatic photo extraction
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'Apply automatic photo extraction') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add client-side shelf photo reading
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+
+          # Load Tesseract.js in the static prototype so captured photos can be read on-device.
+          if 'tesseract.min.js' not in s:
+              anchor = '</head>'
+              script = '<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>\n'
+              if anchor not in s:
+                  raise SystemExit('head anchor not found')
+              s = s.replace(anchor, script + anchor, 1)
+
+          # Give the user live feedback while the photo is being analyzed.
+          old_camera = '<div class="helper" style="margin-top:5px">One product / price at a time</div>'
+          new_camera = '<div class="helper" id="cameraStatus" style="margin-top:5px">One product / price at a time</div>'
+          if 'id="cameraStatus"' not in s:
+              if old_camera not in s:
+                  raise SystemExit('camera helper anchor not found')
+              s = s.replace(old_camera, new_camera, 1)
+
+          handler_anchor = "$('#addItemBtn').onclick=()=>{"
+          photo_helpers = r'''function cleanOCRLine(v){return String(v||'').replace(/\s+/g,' ').trim()}
+function parseShelfPhotoText(text){
+  const lines=String(text||'').split(/\r?\n/).map(cleanOCRLine).filter(v=>v.length>1);
+  const full=lines.join('\n');
+
+  let size='';
+  const sizeMatch=full.match(/\b(\d+(?:[.,]\d+)?)\s*(kg|g|mg|ml|cl|l|stuks?|st|pcs?|pack)\b/i);
+  if(sizeMatch){
+    const unit=sizeMatch[2].toLowerCase()==='st'?'stuks':sizeMatch[2];
+    size=(sizeMatch[1].replace(',','.')+' '+unit).replace(/\s+/g,' ');
+  }
+
+  const prices=[];
+  lines.forEach((line,index)=>{
+    const hasEuro=/€/.test(line);
+    const looksUnit=/(?:\/\s*(?:kg|l)|per\s+(?:kg|l)|100\s*(?:g|ml)|prijs\s*per)/i.test(line);
+    const promo=/actie|bonus|aanbieding|nu\b|korting/i.test(line);
+    const matches=line.match(/\b\d{1,3}[.,]\d{2}\b/g)||[];
+    matches.forEach(raw=>{
+      const value=Number(raw.replace(',','.'));
+      if(value>0&&value<100){
+        let score=(hasEuro?5:0)+(promo?2:0)+(index/Math.max(lines.length,1));
+        if(looksUnit)score-=5;
+        prices.push({value,score});
+      }
+    });
+  });
+  prices.sort((a,b)=>b.score-a.score);
+  const price=prices.length?prices[0].value:null;
+
+  const productCandidates=lines.map((line,index)=>{
+    let cleaned=line
+      .replace(/€\s*\d{1,3}[.,]\d{2}/g,' ')
+      .replace(/\b\d{1,3}[.,]\d{2}\b/g,' ')
+      .replace(/\b\d+(?:[.,]\d+)?\s*(?:kg|g|mg|ml|cl|l|stuks?|st|pcs?|pack)\b/ig,' ')
+      .replace(/\s+/g,' ').trim();
+    const letters=(cleaned.match(/[A-Za-zÀ-ÿ]/g)||[]).length;
+    const bad=/^(?:bonus|actie|aanbieding|prijs|korting|per\b|totaal|inhoud|houdbaar|barcode|ean)/i.test(cleaned) || /\b(?:prijs per|per kg|per liter)\b/i.test(cleaned);
+    const barcode=/\d{7,}/.test(cleaned);
+    const score=letters + (index<Math.max(4,lines.length*.55)?4:0) - (bad?30:0) - (barcode?30:0);
+    return {cleaned,letters,score};
+  }).filter(x=>x.letters>=4 && x.cleaned.length>=3 && x.cleaned.length<=70);
+  productCandidates.sort((a,b)=>b.score-a.score);
+  const product=productCandidates.length?productCandidates[0].cleaned:'';
+  return {product,price,size,raw:text};
+}
+async function analyzeShelfPhoto(file){
+  const status=$('#cameraStatus');
+  if(!file)return;
+  status.textContent='Reading photo… first scan may take a few seconds.';
+  $('#cameraBox').style.opacity='.72';
+  try{
+    if(!window.Tesseract)throw new Error('Photo reader unavailable');
+    const result=await Tesseract.recognize(file,'nld+eng',{logger:m=>{
+      if(m.status==='recognizing text'&&Number.isFinite(m.progress))status.textContent='Reading label… '+Math.round(m.progress*100)+'%';
+      else if(m.status)status.textContent='Reading photo…';
+    }});
+    const parsed=parseShelfPhotoText(result?.data?.text||'');
+    let found=0;
+    if(parsed.product){
+      if(!updateContext.id || !$('#detectedProduct').value.trim())$('#detectedProduct').value=parsed.product;
+      found++;
+    }
+    if(Number.isFinite(parsed.price)){$('#detectedPrice').value=parsed.price.toFixed(2);found++;}
+    if(parsed.size){$('#detectedSize').value=parsed.size;found++;}
+    status.textContent=found===3?'Detected product, price and size — please confirm.':found?'Detected '+found+' of 3 details — please check and correct the rest.':'Could not read the label clearly — try a closer, straighter photo.';
+    toast(found?'Photo details detected':'Could not read label clearly');
+  }catch(err){
+    console.error(err);
+    status.textContent='Could not analyze this photo. You can retake it or enter the details manually.';
+    toast('Photo reading failed');
+  }finally{
+    $('#cameraBox').style.opacity='1';
+  }
+}
+
+'''
+          if 'function analyzeShelfPhoto(file)' not in s:
+              if handler_anchor not in s:
+                  raise SystemExit('JS handler anchor not found')
+              s = s.replace(handler_anchor, photo_helpers + handler_anchor, 1)
+
+          old_onchange = "$('#cameraInput').onchange=()=>{if($('#cameraInput').files.length){if(!$('#detectedPrice').value)$('#detectedPrice').value='2.49';if(!$('#detectedSize').value)$('#detectedSize').value='520 ml';toast('Photo ready — confirm details')}};"
+          new_onchange = "$('#cameraInput').onchange=async()=>{const file=$('#cameraInput').files[0];if(file)await analyzeShelfPhoto(file)};"
+          if old_onchange in s:
+              s = s.replace(old_onchange, new_onchange, 1)
+          elif 'await analyzeShelfPhoto(file)' not in s:
+              raise SystemExit('camera onchange anchor not found')
+
+          p.write_text(s)
+          PY
+      - name: Commit automatic extraction
+        run: |
+          git config user.name "Smart Basket Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Apply automatic photo extraction"
+          git push
