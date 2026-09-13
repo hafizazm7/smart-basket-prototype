@@ -3,22 +3,16 @@ import { searchAldiCheckjebon } from "./checkjebon-aldi";
 import { searchActionApi } from "./action-api";
 import { searchEtosMobileApi } from "./etos-mobile-api";
 import { searchKruidvatApi } from "./kruidvat-api";
-import { normalizeRetailerPriceRecord, type NormalizedRetailerPrice } from "./normalize-record";
-import { parseProductJsonLd } from "./jsonld";
+import type { NormalizedRetailerPrice } from "./normalize-record";
 import { RETAILER_SOURCES } from "./sources";
 import type { RetailerAdapter, RetailerKey, RetailerPriceRecord } from "./types";
-
-const DEFAULT_HEADERS = {
-  "accept-language": "nl-NL,nl;q=0.9,en;q=0.8",
-  "user-agent": "SmartBasket-MVP/0.1 (+centralized-retailer-price-collector)",
-};
 
 export type RetailerSearchResult = {
   retailerKey: RetailerKey;
   sourceUrl: string;
   status: number;
   records: NormalizedRetailerPrice[];
-  parser: "json-ld" | "ah-mobile-api" | "checkjebon" | "action-graphql" | "etos-mobile-api" | "kruidvat-app-api";
+  parser: "ah-mobile-api" | "checkjebon" | "action-graphql" | "etos-mobile-api" | "kruidvat-app-api";
 };
 
 export class OfficialSearchAdapter implements RetailerAdapter {
@@ -41,64 +35,18 @@ export class OfficialSearchAdapter implements RetailerAdapter {
   async searchNormalized(query: string): Promise<RetailerSearchResult> {
     const trimmed = query.trim();
 
-    if (this.key === "ah") return searchAhMobileApi(trimmed);
-    if (this.key === "aldi") return searchAldiCheckjebon(trimmed);
-    if (this.key === "action") return searchActionApi(trimmed);
-    if (this.key === "etos") return searchEtosMobileApi(trimmed);
-    if (this.key === "kruidvat") return searchKruidvatApi(trimmed);
-
-    if (!trimmed) {
-      return {
-        retailerKey: this.key,
-        sourceUrl: RETAILER_SOURCES[this.key].searchUrl(""),
-        status: 400,
-        records: [],
-        parser: "json-ld",
-      };
+    switch (this.key) {
+      case "ah":
+        return searchAhMobileApi(trimmed);
+      case "aldi":
+        return searchAldiCheckjebon(trimmed);
+      case "action":
+        return searchActionApi(trimmed);
+      case "etos":
+        return searchEtosMobileApi(trimmed);
+      case "kruidvat":
+        return searchKruidvatApi(trimmed);
     }
-
-    const sourceUrl = RETAILER_SOURCES[this.key].searchUrl(trimmed);
-    const response = await fetch(sourceUrl, {
-      cache: "no-store",
-      redirect: "follow",
-      signal: AbortSignal.timeout(10_000),
-      headers: DEFAULT_HEADERS,
-    });
-
-    if (!response.ok) {
-      return {
-        retailerKey: this.key,
-        sourceUrl,
-        status: response.status,
-        records: [],
-        parser: "json-ld",
-      };
-    }
-
-    const contentType = response.headers.get("content-type") ?? "";
-    if (!contentType.includes("text/html")) {
-      return {
-        retailerKey: this.key,
-        sourceUrl,
-        status: response.status,
-        records: [],
-        parser: "json-ld",
-      };
-    }
-
-    const observedAt = new Date().toISOString();
-    const html = await response.text();
-    const records = parseProductJsonLd(html, this.key, sourceUrl, observedAt)
-      .map(normalizeRetailerPriceRecord)
-      .slice(0, 50);
-
-    return {
-      retailerKey: this.key,
-      sourceUrl,
-      status: response.status,
-      records,
-      parser: "json-ld",
-    };
   }
 }
 
