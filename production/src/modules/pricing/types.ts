@@ -10,8 +10,12 @@ export type PromotionKind =
   | "multibuy"
   | "buy_x_pay_y"
   | "percent"
+  | "nth_percent"
+  | "nth_fixed"
   | "fixed_price"
   | "other";
+
+export type PromotionEligibility = "public" | "loyalty" | "personalized" | "unknown";
 
 export type PriceObservation = {
   id?: string;
@@ -37,6 +41,7 @@ export type Promotion = {
   payQuantity?: number | null;
   promoPrice?: number | null;
   discountPercent?: number | null;
+  eligibility?: PromotionEligibility;
   startsAt?: string | Date | null;
   endsAt?: string | Date | null;
   observedAt: string | Date;
