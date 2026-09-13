@@ -31,17 +31,24 @@ export default function ShoppingList() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
+    let restored: ShoppingItem[] = [];
+
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as ShoppingItem[];
-        if (Array.isArray(parsed)) setItems(parsed);
+        if (Array.isArray(parsed)) restored = parsed;
       }
     } catch {
       // Keep the list usable even if local storage is unavailable or malformed.
-    } finally {
-      setReady(true);
     }
+
+    const frame = window.requestAnimationFrame(() => {
+      setItems(restored);
+      setReady(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
