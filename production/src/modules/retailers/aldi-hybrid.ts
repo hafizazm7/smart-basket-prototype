@@ -11,9 +11,12 @@ export async function searchAldiHybrid(query: string, limit = 20): Promise<{
 }> {
   const trimmed = query.trim();
 
-  if (!trimmed || trimmed === "*") {
-    const fallbackQuery = trimmed === "*" ? "melk" : trimmed;
-    return searchAldiPrijsProfeet(fallbackQuery, limit);
+  if (!trimmed) {
+    return searchAldiPrijsProfeet("*", limit);
+  }
+
+  if (trimmed === "*") {
+    return searchAldiPrijsProfeet("*", limit);
   }
 
   try {
