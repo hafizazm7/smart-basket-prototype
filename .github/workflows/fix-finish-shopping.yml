@@ -16,11 +16,62 @@ jobs:
       - name: Rebuild index.html from approved prototype payload
         run: |
           base64 -d .github/proto.b64 | gzip -d > index.html
+      - name: Add two-way store navigation in Shopping Mode
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+
+          css_anchor = '.completion.show{display:block}\n'
+          css_patch = '''.completion.show{display:block}\n.shop-store-tabs{display:flex;gap:8px;overflow-x:auto;margin:14px 0 2px;padding:1px 0 3px;scrollbar-width:none}.shop-store-tabs::-webkit-scrollbar{display:none}.shop-store-tab{flex:1 0 auto;min-width:112px;height:44px;border:1px solid var(--line);border-radius:13px;background:#fff;color:#65726b;font-size:12px;font-weight:850;padding:0 12px}.shop-store-tab.active{border-color:var(--green);background:var(--green-soft);color:var(--green);box-shadow:0 4px 12px rgba(20,122,88,.08)}.shop-nav-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.shop-nav-actions .secondary{width:100%;min-height:54px}.shop-nav-actions button:disabled{cursor:default;opacity:.42}\n'''
+          if '.shop-store-tabs{' not in s:
+              if css_anchor not in s:
+                  raise SystemExit('CSS anchor not found')
+              s = s.replace(css_anchor, css_patch, 1)
+
+          html_anchor = '    <div class="section-title">Buy here</div>\n'
+          html_patch = '    <div class="shop-store-tabs" id="shopStoreTabs" aria-label="Switch store"></div>\n\n    <div class="section-title">Buy here</div>\n'
+          if 'id="shopStoreTabs"' not in s:
+              if html_anchor not in s:
+                  raise SystemExit('Shop tab HTML anchor not found')
+              s = s.replace(html_anchor, html_patch, 1)
+
+          old_buttons = '    <div style="height:16px"></div>\n    <button class="primary" id="nextStore">Next store</button>\n'
+          new_buttons = '    <div style="height:16px"></div>\n    <div class="shop-nav-actions">\n      <button class="secondary" id="prevStore">← Previous store</button>\n      <button class="primary" id="nextStore">Next store →</button>\n    </div>\n'
+          if 'id="prevStore"' not in s:
+              if old_buttons not in s:
+                  raise SystemExit('Shop navigation HTML anchor not found')
+              s = s.replace(old_buttons, new_buttons, 1)
+
+          js_anchor = "  $('#storeCounter').textContent='STORE '+(state.storeIndex+1)+' OF '+p.stores.length;$('#shopStoreName').textContent=s.name;$('#shopStoreTotal').textContent=money(s.total);$('#freshnessText').textContent='Updated today';\n"
+          js_patch = js_anchor + "  const tabs=$('#shopStoreTabs');tabs.innerHTML='';p.stores.forEach((store,i)=>{const b=document.createElement('button');b.className='shop-store-tab'+(i===state.storeIndex?' active':'');b.textContent=store.short+' '+(i+1)+'/'+p.stores.length;b.setAttribute('aria-label','Open '+store.name);b.onclick=()=>{state.storeIndex=i;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})};tabs.appendChild(b)});\n"
+          if "const tabs=$('#shopStoreTabs')" not in s:
+              if js_anchor not in s:
+                  raise SystemExit('renderShop header anchor not found')
+              s = s.replace(js_anchor, js_patch, 1)
+
+          old_render_end = "  const final=state.storeIndex===p.stores.length-1;$('#nextStore').textContent=final?'Finish shopping':'Next store';$('#shoppingDone').classList.remove('show');$('#nextStore').disabled=false;$('#nextStore').style.opacity='1';\n"
+          new_render_end = "  const final=state.storeIndex===p.stores.length-1;const first=state.storeIndex===0;$('#prevStore').disabled=first;$('#nextStore').textContent=final?'Finish shopping':'Next store →';$('#shoppingDone').classList.remove('show');$('#nextStore').disabled=false;$('#nextStore').style.opacity='1';\n"
+          if old_render_end in s:
+              s = s.replace(old_render_end, new_render_end, 1)
+          elif "$('#prevStore').disabled=first" not in s:
+              raise SystemExit('renderShop footer anchor not found')
+
+          next_handler = "$('#nextStore').onclick=()=>{const p=getStorePlan();if(state.storeIndex<p.stores.length-1){state.storeIndex++;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}else{$('#shoppingDone').classList.add('show');$('#nextStore').textContent='Shopping completed ✓';$('#nextStore').disabled=true;$('#nextStore').style.opacity='.65';toast('Shopping complete')}};\n"
+          prev_handler = "$('#prevStore').onclick=()=>{if(state.storeIndex>0){state.storeIndex--;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})}};\n"
+          if "$('#prevStore').onclick" not in s:
+              if next_handler not in s:
+                  raise SystemExit('Next-store handler anchor not found')
+              s = s.replace(next_handler, prev_handler + next_handler, 1)
+
+          p.write_text(s)
+          PY
       - name: Commit rebuilt prototype
         run: |
           git config user.name "Smart Basket Bot"
           git config user.email "actions@users.noreply.github.com"
           git add index.html
           git diff --cached --quiet && exit 0
-          git commit -m "Rebuild prototype to match approved UX v1.0"
+          git commit -m "Fix two-way store navigation in shopping mode"
           git push
