@@ -1,6 +1,8 @@
 import { searchAhMobileApi } from "./ah-mobile-api";
 import { searchAldiCheckjebon } from "./checkjebon-aldi";
 import { searchActionApi } from "./action-api";
+import { searchEtosMobileApi } from "./etos-mobile-api";
+import { searchKruidvatApi } from "./kruidvat-api";
 import { normalizeRetailerPriceRecord, type NormalizedRetailerPrice } from "./normalize-record";
 import { parseProductJsonLd } from "./jsonld";
 import { RETAILER_SOURCES } from "./sources";
@@ -16,7 +18,7 @@ export type RetailerSearchResult = {
   sourceUrl: string;
   status: number;
   records: NormalizedRetailerPrice[];
-  parser: "json-ld" | "ah-mobile-api" | "checkjebon" | "action-graphql";
+  parser: "json-ld" | "ah-mobile-api" | "checkjebon" | "action-graphql" | "etos-mobile-api" | "kruidvat-app-api";
 };
 
 export class OfficialSearchAdapter implements RetailerAdapter {
@@ -42,6 +44,8 @@ export class OfficialSearchAdapter implements RetailerAdapter {
     if (this.key === "ah") return searchAhMobileApi(trimmed);
     if (this.key === "aldi") return searchAldiCheckjebon(trimmed);
     if (this.key === "action") return searchActionApi(trimmed);
+    if (this.key === "etos") return searchEtosMobileApi(trimmed);
+    if (this.key === "kruidvat") return searchKruidvatApi(trimmed);
 
     if (!trimmed) {
       return {
