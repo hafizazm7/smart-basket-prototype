@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   patch:
-    if: ${{ !contains(github.event.head_commit.message, 'Apply automatic photo extraction') }}
+    if: "${{ !contains(github.event.head_commit.message, 'Apply automatic photo extraction') }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,6 @@ jobs:
           p = Path('index.html')
           s = p.read_text()
 
-          # Load Tesseract.js in the static prototype so captured photos can be read on-device.
           if 'tesseract.min.js' not in s:
               anchor = '</head>'
               script = '<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>\n'
@@ -28,7 +27,6 @@ jobs:
                   raise SystemExit('head anchor not found')
               s = s.replace(anchor, script + anchor, 1)
 
-          # Give the user live feedback while the photo is being analyzed.
           old_camera = '<div class="helper" style="margin-top:5px">One product / price at a time</div>'
           new_camera = '<div class="helper" id="cameraStatus" style="margin-top:5px">One product / price at a time</div>'
           if 'id="cameraStatus"' not in s:
