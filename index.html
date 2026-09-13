@@ -210,6 +210,8 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
       <div><div class="camera-icon">📷</div><div style="font-weight:850">Take shelf photo</div><div class="helper" id="cameraStatus" style="margin-top:5px">One product / price at a time</div></div>
     </div>
     <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
+    <button class="secondary full" id="galleryBtn" style="margin-top:10px">🖼️ Choose from gallery</button>
+    <input id="galleryInput" type="file" accept="image/*" hidden />
 
     <div class="field-label">Product</div><input class="text-input" id="detectedProduct" placeholder="e.g. Dreft Quickwash" />
     <div class="detected-grid">
@@ -430,6 +432,8 @@ $('#completeNewList').onclick=()=>{state.items=[];state.checks={};state.storeInd
 $('#shopPhotoBtn').onclick=()=>{const p=getStorePlan(),s=p.stores[state.storeIndex];openUpdate({store:s.name,returnTo:'shop'})};
 $('#backFromUpdate').onclick=()=>showScreen(updateContext.returnTo||'list');
 $('#cameraBox').onclick=()=>$('#cameraInput').click();
+$('#galleryBtn').onclick=()=>$('#galleryInput').click();
+$('#galleryInput').onchange=async()=>{const file=$('#galleryInput').files[0];if(file)await analyzeShelfPhoto(file)};
 $('#cameraInput').onchange=async()=>{const file=$('#cameraInput').files[0];if(file)await analyzeShelfPhoto(file)};
 $('#saveUpdatedPrice').onclick=()=>{const p=parseFloat($('#detectedPrice').value.replace(',','.'));if(!Number.isFinite(p)||p<=0){toast('Enter a valid price');return}const product=$('#detectedProduct').value.trim(),store=$('#detectedStore').value.trim();if(!product||!store){toast('Confirm product and store');return}const id=updateContext.id||store+'|'+product;state.overrides[id]=p;persist();toast('Shelf price saved');showScreen(updateContext.returnTo||'list')};
 $('#addLocalStore').onclick=()=>{const v=$('#localStoreInput').value.trim();if(!v)return;if(!state.locals.includes(v))state.locals.push(v);$('#localStoreInput').value='';persist();renderStores()};
