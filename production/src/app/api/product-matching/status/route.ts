@@ -1,0 +1,91 @@
+import { rankMatches } from "@/modules/matching/match";
+import type { RetrievedCandidate } from "@/modules/matching/types";
+import type { RetailerKey } from "@/modules/retailers/types";
+
+export const dynamic = "force-dynamic";
+
+function candidate(
+  retailer: RetailerKey,
+  externalId: string,
+  name: string,
+  brand: string | null,
+  sizeValue: number | null,
+  sizeUnit: string | null,
+  sourceRank = 0,
+): RetrievedCandidate {
+  return {
+    retailer,
+    sourceRank,
+    record: {
+      retailerKey: retailer,
+      externalId,
+      rawName: name,
+      brand,
+      description: sizeValue && sizeUnit ? `${sizeValue} ${sizeUnit}` : null,
+      sizeValue,
+      sizeUnit,
+      productUrl: null,
+      price: 3.99,
+      currency: "EUR",
+      sourceUrl: "https://example.test/product-source",
+      observedAt: new Date().toISOString(),
+      promotion: null,
+      unitPrice: null,
+      unitPriceUnit: null,
+    },
+  };
+}
+
+export async function GET() {
+  const dreft = candidate("ah", "dreft-350", "Dreft Platinum Afwasmiddel Original", "Dreft", 350, "ml");
+  const fairy = candidate("kruidvat", "fairy-383", "Fairy Original Afwasmiddel", "Fairy", 383, "ml");
+  const wipes = candidate("etos", "wipes-1", "Zwitsal Sensitive Billendoekjes", "Zwitsal", 57, "wipe");
+  const unrelated = candidate("action", "shampoo-1", "Shampoo verzorging", null, 300, "ml", 8);
+
+  const locked = rankMatches(
+    { query: "Dreft afwasmiddel 350ml", alternativesAllowed: false },
+    [dreft, fairy],
+  );
+  const withAlternatives = rankMatches(
+    { query: "Dreft afwasmiddel 350ml", alternativesAllowed: true },
+    [dreft, fairy],
+  );
+  const synonym = rankMatches(
+    { query: "baby wipes", alternativesAllowed: false },
+    [wipes],
+  );
+  const rejectUnrelated = rankMatches(
+    { query: "melk", alternativesAllowed: false },
+    [unrelated],
+  );
+
+  const checks = {
+    requestedBrandInferred: locked[0]?.requestedBrand === "Dreft",
+    requestedBrandLocked: locked.some((match) => match.record.externalId === "dreft-350" && match.accepted)
+      && locked.some((match) => match.record.externalId === "fairy-383" && !match.accepted),
+    alternativesCanBeEnabled: withAlternatives.some((match) => match.record.externalId === "fairy-383" && match.accepted),
+    exactBrandRanksFirst: withAlternatives[0]?.record.externalId === "dreft-350",
+    dutchEnglishSynonymWorks: synonym[0]?.accepted === true,
+    unrelatedCandidateRejected: rejectUnrelated[0]?.accepted === false,
+  };
+
+  return Response.json({
+    ok: Object.values(checks).every(Boolean),
+    checkedAt: new Date().toISOString(),
+    checks,
+    samples: {
+      locked: locked.map((match) => ({
+        id: match.record.externalId,
+        accepted: match.accepted,
+        confidence: match.confidence,
+        reasons: match.reasons,
+      })),
+      alternatives: withAlternatives.map((match) => ({
+        id: match.record.externalId,
+        accepted: match.accepted,
+        confidence: match.confidence,
+        reasons: match.reasons,
+      })),
+    },
+  });
+}
