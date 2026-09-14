@@ -48,6 +48,11 @@ type MatchState = {
   keptAsTyped: boolean;
 };
 
+type StoredOverride = string | {
+  selectedKey: string;
+  alternativesAllowed: boolean;
+};
+
 const OVERRIDE_KEY = "smart-basket.match-overrides.v1";
 const KEEP_TYPED_SENTINEL = "__keep_as_typed__";
 const MATCH_CONCURRENCY = 3;
@@ -64,20 +69,48 @@ function formatMoney(value: number): string {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(value);
 }
 
-function readOverrides(): Record<string, string> {
+function readOverrides(): Record<string, StoredOverride> {
   try {
     const raw = window.localStorage.getItem(OVERRIDE_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === "object" ? parsed as Record<string, string> : {};
+    return parsed && typeof parsed === "object" ? parsed as Record<string, StoredOverride> : {};
   } catch {
     return {};
   }
 }
 
-function saveOverride(query: string, selectedKey: string) {
+function savedOverride(value: StoredOverride | undefined): {
+  selectedKey: string | null;
+  alternativesAllowed: boolean;
+  legacy: boolean;
+} {
+  if (typeof value === "string") {
+    return { selectedKey: value, alternativesAllowed: false, legacy: true };
+  }
+  if (value && typeof value.selectedKey === "string") {
+    return {
+      selectedKey: value.selectedKey,
+      alternativesAllowed: value.alternativesAllowed === true,
+      legacy: false,
+    };
+  }
+  return { selectedKey: null, alternativesAllowed: false, legacy: false };
+}
+
+function saveOverride(query: string, selectedKey: string, alternativesAllowed: boolean) {
   try {
     const overrides = readOverrides();
-    overrides[queryKey(query)] = selectedKey;
+    overrides[queryKey(query)] = { selectedKey, alternativesAllowed };
+    window.localStorage.setItem(OVERRIDE_KEY, JSON.stringify(overrides));
+  } catch {
+    // Keep matching usable when browser storage is blocked.
+  }
+}
+
+function clearOverride(query: string) {
+  try {
+    const overrides = readOverrides();
+    delete overrides[queryKey(query)];
     window.localStorage.setItem(OVERRIDE_KEY, JSON.stringify(overrides));
   } catch {
     // Keep matching usable when browser storage is blocked.
@@ -133,13 +166,33 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
 
       const item = items[index];
       try {
-        const response = await loadMatch(item, false);
-        const override = readOverrides()[queryKey(item.text)] ?? null;
-        const keptAsTyped = override === KEEP_TYPED_SENTINEL;
-        const choices = allOptions(response);
-        const overrideChoice = keptAsTyped
+        const stored = savedOverride(readOverrides()[queryKey(item.text)]);
+        const keptAsTyped = stored.selectedKey === KEEP_TYPED_SENTINEL;
+        let alternativesAllowed = keptAsTyped ? false : stored.alternativesAllowed;
+        let response = await loadMatch(item, alternativesAllowed);
+        let choices = allOptions(response);
+        let overrideChoice = keptAsTyped
           ? null
-          : choices.find((option) => optionKey(option) === override) ?? null;
+          : choices.find((option) => optionKey(option) === stored.selectedKey) ?? null;
+
+        // Migrate old string-only overrides. A missing locked choice may be an
+        // alternative that the user explicitly selected before permission was stored.
+        if (stored.legacy && stored.selectedKey && !keptAsTyped && !overrideChoice) {
+          const alternativeResponse = await loadMatch(item, true);
+          const alternativeChoices = allOptions(alternativeResponse);
+          const alternativeChoice = alternativeChoices.find((option) => (
+            optionKey(option) === stored.selectedKey
+          )) ?? null;
+
+          if (alternativeChoice) {
+            alternativesAllowed = true;
+            response = alternativeResponse;
+            choices = alternativeChoices;
+            overrideChoice = alternativeChoice;
+            saveOverride(item.text, stored.selectedKey, true);
+          }
+        }
+
         const selectedKey = keptAsTyped
           ? null
           : overrideChoice
@@ -152,7 +205,7 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
           loading: false,
           error: null,
           response,
-          alternativesAllowed: false,
+          alternativesAllowed,
           selectedKey,
           showOther: Boolean(overrideChoice && !overrideChoice.accepted),
           confirmedByUser: Boolean(overrideChoice),
@@ -214,11 +267,17 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
     const loading = values.some((state) => state.loading);
     const matched = values.filter((state) => Boolean(selectedOption(state))).length;
     const kept = values.filter((state) => state.keptAsTyped).length;
+    const confirmed = values.filter((state) => (
+      state.confirmedByUser
+      && !state.keptAsTyped
+      && Boolean(selectedOption(state))
+    )).length;
     const attention = values.filter((state) => needsAttention(state)).length;
-    return { loading, matched, kept, attention };
+    return { loading, matched, kept, confirmed, attention };
   }, [states]);
 
   async function refreshMatch(item: ReviewItem, allowed: boolean) {
+    clearOverride(item.text);
     setStates((current) => ({
       ...current,
       [item.id]: {
@@ -275,6 +334,7 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
   }
 
   function selectMatch(item: ReviewItem, key: string) {
+    const alternativesAllowed = states[item.id]?.alternativesAllowed ?? false;
     setStates((current) => ({
       ...current,
       [item.id]: {
@@ -284,7 +344,7 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
         keptAsTyped: false,
       },
     }));
-    saveOverride(item.text, key);
+    saveOverride(item.text, key, alternativesAllowed);
   }
 
   function confirmSuggested(item: ReviewItem) {
@@ -298,7 +358,7 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
         keptAsTyped: false,
       },
     }));
-    saveOverride(item.text, state.selectedKey);
+    saveOverride(item.text, state.selectedKey, state.alternativesAllowed);
   }
 
   function keepAsTyped(item: ReviewItem) {
@@ -311,7 +371,7 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
         keptAsTyped: true,
       },
     }));
-    saveOverride(item.text, KEEP_TYPED_SENTINEL);
+    saveOverride(item.text, KEEP_TYPED_SENTINEL, false);
   }
 
   function toggleOther(itemId: string) {
@@ -345,6 +405,8 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
             ? `${summary.matched}/${items.length} items have product matches${summary.kept ? ` · ${summary.kept} kept as typed` : ""} · ${summary.attention} need your input.`
             : summary.kept > 0
               ? `${summary.matched}/${items.length} items have product matches · ${summary.kept} kept as typed. Nothing else to do here.`
+              : summary.confirmed > 0
+                ? `${summary.matched}/${items.length} items matched · ${summary.matched - summary.confirmed} automatically · ${summary.confirmed} confirmed. Nothing else to do here.`
               : `${summary.matched}/${items.length} items matched automatically. Nothing else to do here.`}
         </div>
       </div>
