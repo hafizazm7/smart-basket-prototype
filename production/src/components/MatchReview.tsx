@@ -21,6 +21,7 @@ type MatchOption = {
   unitPriceUnit: string | null;
   promotion: string | null;
   confidence: number;
+  accepted: boolean;
   requiresConfirmation: boolean;
   reasons: string[];
 };
@@ -33,6 +34,7 @@ type MatchResponse = {
   alternativesAllowed: boolean;
   acceptedMatches: number;
   matches: MatchOption[];
+  otherCandidates?: MatchOption[];
 };
 
 type MatchState = {
@@ -41,6 +43,7 @@ type MatchState = {
   response: MatchResponse | null;
   alternativesAllowed: boolean;
   selectedKey: string | null;
+  showOther: boolean;
 };
 
 const OVERRIDE_KEY = "smart-basket.match-overrides.v1";
@@ -74,6 +77,17 @@ function saveOverride(query: string, selectedKey: string) {
   window.localStorage.setItem(OVERRIDE_KEY, JSON.stringify(overrides));
 }
 
+function allOptions(response: MatchResponse | null): MatchOption[] {
+  if (!response) return [];
+  const seen = new Set<string>();
+  return [...response.matches, ...(response.otherCandidates ?? [])].filter((option) => {
+    const key = optionKey(option);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 async function loadMatch(item: ReviewItem, alternativesAllowed: boolean): Promise<MatchResponse> {
   const params = new URLSearchParams({ q: item.text });
   if (alternativesAllowed) params.set("alternatives", "true");
@@ -99,8 +113,10 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
       try {
         const response = await loadMatch(item, false);
         const override = readOverrides()[queryKey(item.text)] ?? null;
-        const selectedKey = response.matches.some((option) => optionKey(option) === override)
-          ? override
+        const choices = allOptions(response);
+        const overrideChoice = choices.find((option) => optionKey(option) === override) ?? null;
+        const selectedKey = overrideChoice
+          ? optionKey(overrideChoice)
           : response.matches[0]
             ? optionKey(response.matches[0])
             : null;
@@ -111,6 +127,7 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
           response,
           alternativesAllowed: false,
           selectedKey,
+          showOther: Boolean(overrideChoice && !overrideChoice.accepted),
         }] as const;
       } catch (error) {
         entries[index] = [item.id, {
@@ -119,6 +136,7 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
           response: null,
           alternativesAllowed: false,
           selectedKey: null,
+          showOther: false,
         }] as const;
       }
     }
@@ -143,6 +161,7 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
       response: null,
       alternativesAllowed: false,
       selectedKey: null,
+      showOther: false,
     }])));
 
     void loadInitialMatches(items).then((entries) => {
@@ -157,9 +176,9 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
   const summary = useMemo(() => {
     const values = Object.values(states);
     const loading = values.some((state) => state.loading);
-    const ready = values.filter((state) => state.response?.matches.length).length;
+    const ready = values.filter((state) => Boolean(state.selectedKey)).length;
     const needsCheck = values.filter((state) => {
-      const selected = state.response?.matches.find((option) => optionKey(option) === state.selectedKey);
+      const selected = allOptions(state.response).find((option) => optionKey(option) === state.selectedKey);
       return Boolean(selected?.requiresConfirmation);
     }).length;
     return { loading, ready, needsCheck };
@@ -169,7 +188,12 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
     setStates((current) => ({
       ...current,
       [item.id]: {
-        ...(current[item.id] ?? { response: null, selectedKey: null, error: null }),
+        ...(current[item.id] ?? {
+          response: null,
+          selectedKey: null,
+          error: null,
+          showOther: false,
+        }),
         loading: true,
         error: null,
         alternativesAllowed: allowed,
@@ -187,13 +211,14 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
           response,
           alternativesAllowed: allowed,
           selectedKey,
+          showOther: false,
         },
       }));
     } catch (error) {
       setStates((current) => ({
         ...current,
         [item.id]: {
-          ...(current[item.id] ?? { response: null, selectedKey: null }),
+          ...(current[item.id] ?? { response: null, selectedKey: null, showOther: false }),
           loading: false,
           error: error instanceof Error ? error.message : "Product matching failed.",
           alternativesAllowed: allowed,
@@ -210,6 +235,13 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
     saveOverride(item.text, key);
   }
 
+  function toggleOther(itemId: string) {
+    setStates((current) => ({
+      ...current,
+      [itemId]: { ...current[itemId], showOther: !current[itemId]?.showOther },
+    }));
+  }
+
   return (
     <section className="card stack" aria-label="Product match review">
       <div>
@@ -223,9 +255,12 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
 
       {items.map((item) => {
         const state = states[item.id];
-        const response = state?.response;
-        const options = response?.matches ?? [];
-        const selected = options.find((option) => optionKey(option) === state?.selectedKey) ?? null;
+        const response = state?.response ?? null;
+        const recommended = response?.matches ?? [];
+        const others = response?.otherCandidates ?? [];
+        const choices = allOptions(response);
+        const visibleOptions = state?.showOther ? choices : recommended;
+        const selected = choices.find((option) => optionKey(option) === state?.selectedKey) ?? null;
 
         return (
           <article className="soft-card stack" key={item.id}>
@@ -236,7 +271,7 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
               </div>
               {selected && (
                 <span className="helper">
-                  {selected.requiresConfirmation ? "Check" : "Good match"}
+                  {!selected.accepted ? "Manual choice" : selected.requiresConfirmation ? "Check" : "Good match"}
                 </span>
               )}
             </div>
@@ -245,20 +280,22 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
               <div className="helper">Finding matches…</div>
             ) : state?.error ? (
               <div className="helper">Could not match this item yet: {state.error}</div>
-            ) : options.length === 0 ? (
+            ) : visibleOptions.length === 0 ? (
               <div className="helper">No reliable match found. You can keep the item and verify it in-store later.</div>
             ) : (
               <>
-                <label className="helper" htmlFor={`match-${item.id}`}>Matched product</label>
+                <label className="helper" htmlFor={`match-${item.id}`}>
+                  {state?.showOther ? "Choose product" : "Matched product"}
+                </label>
                 <select
                   id={`match-${item.id}`}
                   className="text-input"
                   value={state.selectedKey ?? ""}
                   onChange={(event) => selectMatch(item, event.target.value)}
                 >
-                  {options.slice(0, 10).map((option) => (
+                  {visibleOptions.slice(0, 20).map((option) => (
                     <option key={optionKey(option)} value={optionKey(option)}>
-                      {option.retailer.toUpperCase()} · {option.name} · {formatMoney(option.price)}
+                      {option.accepted ? "" : "Check · "}{option.retailer.toUpperCase()} · {option.name} · {formatMoney(option.price)}
                     </option>
                   ))}
                 </select>
@@ -269,20 +306,27 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
                     {selected.sizeValue && selected.sizeUnit ? `${selected.sizeValue} ${selected.sizeUnit} · ` : ""}
                     {Math.round(selected.confidence * 100)}% match
                     {selected.unitPrice && selected.unitPriceUnit ? ` · ${formatMoney(selected.unitPrice)}/${selected.unitPriceUnit}` : ""}
+                    {!selected.accepted ? " · verify this choice" : ""}
                   </div>
                 )}
-
-                {response?.requestedBrand && (
-                  <label className="helper row" style={{ gap: 8 }}>
-                    <input
-                      type="checkbox"
-                      checked={state.alternativesAllowed}
-                      onChange={(event) => void toggleAlternatives(item, event.target.checked)}
-                    />
-                    Allow alternatives to {response.requestedBrand}
-                  </label>
-                )}
               </>
+            )}
+
+            {!state?.loading && !state?.error && others.length > 0 && (
+              <button className="paste-btn" type="button" onClick={() => toggleOther(item.id)}>
+                {state?.showOther ? "Hide uncertain matches" : "Can't see the right product? Show possible matches"}
+              </button>
+            )}
+
+            {response?.requestedBrand && (
+              <label className="helper row" style={{ gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={state?.alternativesAllowed ?? false}
+                  onChange={(event) => void toggleAlternatives(item, event.target.checked)}
+                />
+                Allow alternatives to {response.requestedBrand}
+              </label>
             )}
           </article>
         );
