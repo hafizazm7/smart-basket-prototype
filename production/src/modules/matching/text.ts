@@ -8,8 +8,11 @@ const TOKEN_ALIASES: Record<string, string> = {
   mayonaise: "mayonaise",
   carrot: "wortel",
   carrots: "wortel",
+  wortelen: "wortel",
   wortels: "wortel",
   wortel: "wortel",
+  winterpeen: "wortel",
+  peen: "wortel",
   lemon: "citroen",
   lemons: "citroen",
   citroenen: "citroen",
@@ -35,7 +38,7 @@ const TOKEN_ALIASES: Record<string, string> = {
 };
 
 const MATCH_PHRASE_ALIASES: Array<[RegExp, string]> = [
-  [/\bbaby\s+wipes?\b/gi, "babydoekje"],
+  [/\bbaby\s+(?:wipes?|doekjes?)\b/gi, "babydoekje"],
   [/\b(?:dishwashing\s+liquid|dish\s+soap)\b/gi, "afwasmiddel"],
   [/\btoilet\s+paper\b/gi, "toiletpapier"],
   [/\bpaper\s+towels?\b/gi, "keukenpapier"],
