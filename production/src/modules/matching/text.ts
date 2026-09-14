@@ -26,7 +26,34 @@ const TOKEN_ALIASES: Record<string, string> = {
   dishwashing: "afwasmiddel",
   afwas: "afwasmiddel",
   shampoo: "shampoo",
+  diapers: "luier",
+  diaper: "luier",
+  nappies: "luier",
+  nappy: "luier",
+  luiers: "luier",
+  luier: "luier",
 };
+
+const MATCH_PHRASE_ALIASES: Array<[RegExp, string]> = [
+  [/\bbaby\s+wipes?\b/gi, "babydoekje"],
+  [/\b(?:dishwashing\s+liquid|dish\s+soap)\b/gi, "afwasmiddel"],
+  [/\btoilet\s+paper\b/gi, "toiletpapier"],
+  [/\bpaper\s+towels?\b/gi, "keukenpapier"],
+];
+
+const RETAILER_SEARCH_TRANSLATIONS: Array<[RegExp, string]> = [
+  [/\bbaby\s+wipes?\b/gi, "billendoekjes"],
+  [/\b(?:dishwashing\s+liquid|dish\s+soap)\b/gi, "afwasmiddel"],
+  [/\btoilet\s+paper\b/gi, "toiletpapier"],
+  [/\bpaper\s+towels?\b/gi, "keukenpapier"],
+  [/\bcarrots?\b/gi, "wortels"],
+  [/\blemons?\b/gi, "citroenen"],
+  [/\bmayonnaise\b/gi, "mayonaise"],
+  [/\bmayo\b/gi, "mayonaise"],
+  [/\bmilk\b/gi, "melk"],
+  [/\b(?:diapers?|napp(?:y|ies))\b/gi, "luiers"],
+  [/\btoothpaste\b/gi, "tandpasta"],
+];
 
 const STOP_TOKENS = new Set([
   "a",
@@ -54,8 +81,18 @@ const STOP_TOKENS = new Set([
 
 const PACKAGE_TOKEN = /^(?:\d+x)?\d+(?:\.\d+)?(?:kg|g|gr|l|ml|cl|stuks?|stuk|doekjes?|wipes?)$/;
 
+function applyReplacements(input: string, replacements: Array<[RegExp, string]>): string {
+  return replacements.reduce((value, [pattern, replacement]) => value.replace(pattern, replacement), input);
+}
+
+export function toRetailerSearchQuery(input: string): string {
+  return applyReplacements(input, RETAILER_SEARCH_TRANSLATIONS)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function normalizeText(input: string): string {
-  return input
+  return applyReplacements(input, MATCH_PHRASE_ALIASES)
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
