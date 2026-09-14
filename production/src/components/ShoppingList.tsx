@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import MatchReview from "@/components/MatchReview";
 
 type ShoppingItem = {
   id: string;
@@ -29,6 +30,7 @@ export default function ShoppingList() {
   const [editingText, setEditingText] = useState("");
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState("");
+  const [reviewItems, setReviewItems] = useState<ShoppingItem[] | null>(null);
 
   useEffect(() => {
     let restored: ShoppingItem[] = [];
@@ -73,6 +75,7 @@ export default function ShoppingList() {
     }
 
     setItems((current) => [...current, ...lines.map(makeItem)]);
+    setReviewItems(null);
     setBulkInput("");
     setNotice(`${lines.length} item${lines.length === 1 ? "" : "s"} added.`);
   }
@@ -81,6 +84,7 @@ export default function ShoppingList() {
     const value = singleInput.trim();
     if (!value) return;
     setItems((current) => [...current, makeItem(value)]);
+    setReviewItems(null);
     setSingleInput("");
     setNotice("Item added.");
   }
@@ -93,6 +97,7 @@ export default function ShoppingList() {
           : item,
       ),
     );
+    setReviewItems(null);
   }
 
   function startEdit(item: ShoppingItem) {
@@ -106,6 +111,7 @@ export default function ShoppingList() {
     setItems((current) =>
       current.map((item) => (item.id === id ? { ...item, text: value } : item)),
     );
+    setReviewItems(null);
     setEditingId(null);
     setEditingText("");
     setNotice("Item updated.");
@@ -113,6 +119,7 @@ export default function ShoppingList() {
 
   function removeItem(id: string) {
     setItems((current) => current.filter((item) => item.id !== id));
+    setReviewItems(null);
     if (editingId === id) setEditingId(null);
     setNotice("Item removed.");
   }
@@ -121,6 +128,7 @@ export default function ShoppingList() {
     if (!items.length) return;
     if (!window.confirm("Clear the whole shopping list?")) return;
     setItems([]);
+    setReviewItems(null);
     setNotice("Shopping list cleared.");
   }
 
@@ -129,7 +137,8 @@ export default function ShoppingList() {
       setNotice("Add at least one item first.");
       return;
     }
-    setNotice("Your list is ready. Store price comparison is being connected in Step 7.");
+    setReviewItems(items.map((item) => ({ ...item })));
+    setNotice("Product matching started. Review the matches below before basket optimization.");
   }
 
   function handlePhotoUpdate() {
@@ -253,6 +262,8 @@ export default function ShoppingList() {
             ))
           )}
         </section>
+
+        {reviewItems && <MatchReview items={reviewItems} />}
 
         <section className="soft-card photo-card">
           <div className="row space">
