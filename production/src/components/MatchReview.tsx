@@ -44,6 +44,7 @@ type MatchState = {
   alternativesAllowed: boolean;
   selectedKey: string | null;
   showOther: boolean;
+  confirmedByUser: boolean;
 };
 
 const OVERRIDE_KEY = "smart-basket.match-overrides.v1";
@@ -88,6 +89,21 @@ function allOptions(response: MatchResponse | null): MatchOption[] {
   });
 }
 
+function selectedOption(state: MatchState | undefined): MatchOption | null {
+  if (!state?.selectedKey) return null;
+  return allOptions(state.response).find((option) => optionKey(option) === state.selectedKey) ?? null;
+}
+
+function needsAttention(state: MatchState | undefined): boolean {
+  if (!state || state.loading) return false;
+  if (state.error) return true;
+
+  const selected = selectedOption(state);
+  if (!selected) return true;
+  if (!selected.accepted && !state.confirmedByUser) return true;
+  return selected.requiresConfirmation && !state.confirmedByUser;
+}
+
 async function loadMatch(item: ReviewItem, alternativesAllowed: boolean): Promise<MatchResponse> {
   const params = new URLSearchParams({ q: item.text });
   if (alternativesAllowed) params.set("alternatives", "true");
@@ -128,6 +144,7 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
           alternativesAllowed: false,
           selectedKey,
           showOther: Boolean(overrideChoice && !overrideChoice.accepted),
+          confirmedByUser: Boolean(overrideChoice),
         }] as const;
       } catch (error) {
         entries[index] = [item.id, {
@@ -137,6 +154,7 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
           alternativesAllowed: false,
           selectedKey: null,
           showOther: false,
+          confirmedByUser: false,
         }] as const;
       }
     }
@@ -151,9 +169,11 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
 
 export default function MatchReview({ items }: { items: ReviewItem[] }) {
   const [states, setStates] = useState<Record<string, MatchState>>({});
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setShowAll(false);
 
     setStates(Object.fromEntries(items.map((item) => [item.id, {
       loading: true,
@@ -162,6 +182,7 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
       alternativesAllowed: false,
       selectedKey: null,
       showOther: false,
+      confirmedByUser: false,
     }])));
 
     void loadInitialMatches(items).then((entries) => {
@@ -176,12 +197,9 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
   const summary = useMemo(() => {
     const values = Object.values(states);
     const loading = values.some((state) => state.loading);
-    const ready = values.filter((state) => Boolean(state.selectedKey)).length;
-    const needsCheck = values.filter((state) => {
-      const selected = allOptions(state.response).find((option) => optionKey(option) === state.selectedKey);
-      return Boolean(selected?.requiresConfirmation);
-    }).length;
-    return { loading, ready, needsCheck };
+    const matched = values.filter((state) => Boolean(selectedOption(state))).length;
+    const attention = values.filter((state) => needsAttention(state)).length;
+    return { loading, matched, attention };
   }, [states]);
 
   async function toggleAlternatives(item: ReviewItem, allowed: boolean) {
@@ -193,10 +211,12 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
           selectedKey: null,
           error: null,
           showOther: false,
+          confirmedByUser: false,
         }),
         loading: true,
         error: null,
         alternativesAllowed: allowed,
+        confirmedByUser: false,
       },
     }));
 
@@ -212,13 +232,19 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
           alternativesAllowed: allowed,
           selectedKey,
           showOther: false,
+          confirmedByUser: false,
         },
       }));
     } catch (error) {
       setStates((current) => ({
         ...current,
         [item.id]: {
-          ...(current[item.id] ?? { response: null, selectedKey: null, showOther: false }),
+          ...(current[item.id] ?? {
+            response: null,
+            selectedKey: null,
+            showOther: false,
+            confirmedByUser: false,
+          }),
           loading: false,
           error: error instanceof Error ? error.message : "Product matching failed.",
           alternativesAllowed: allowed,
@@ -230,9 +256,23 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
   function selectMatch(item: ReviewItem, key: string) {
     setStates((current) => ({
       ...current,
-      [item.id]: { ...current[item.id], selectedKey: key },
+      [item.id]: {
+        ...current[item.id],
+        selectedKey: key,
+        confirmedByUser: true,
+      },
     }));
     saveOverride(item.text, key);
+  }
+
+  function confirmSuggested(item: ReviewItem) {
+    const state = states[item.id];
+    if (!state?.selectedKey) return;
+    setStates((current) => ({
+      ...current,
+      [item.id]: { ...current[item.id], confirmedByUser: true },
+    }));
+    saveOverride(item.text, state.selectedKey);
   }
 
   function toggleOther(itemId: string) {
@@ -242,25 +282,41 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
     }));
   }
 
+  const visibleItems = showAll
+    ? items
+    : items.filter((item) => needsAttention(states[item.id]));
+
+  if (summary.loading) {
+    return (
+      <section className="card stack" aria-label="Product matching">
+        <div className="photo-title">Finding the right products…</div>
+        <div className="helper">Smart Basket is matching your list automatically. You only need to act if something is unclear.</div>
+      </section>
+    );
+  }
+
   return (
-    <section className="card stack" aria-label="Product match review">
+    <section className="card stack" aria-label="Product matching">
       <div>
-        <div className="photo-title">Review product matches</div>
+        <div className="photo-title">
+          {summary.attention > 0 ? "Quick check" : "Products matched"}
+        </div>
         <div className="helper">
-          {summary.loading
-            ? "Checking the products sold by your stores…"
-            : `${summary.ready}/${items.length} items matched${summary.needsCheck ? ` · ${summary.needsCheck} need a quick check` : ""}.`}
+          {summary.attention > 0
+            ? `${summary.matched}/${items.length} items matched automatically · ${summary.attention} need your input.`
+            : `${summary.matched}/${items.length} items matched automatically. Nothing else to do here.`}
         </div>
       </div>
 
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         const state = states[item.id];
         const response = state?.response ?? null;
         const recommended = response?.matches ?? [];
         const others = response?.otherCandidates ?? [];
         const choices = allOptions(response);
         const visibleOptions = state?.showOther ? choices : recommended;
-        const selected = choices.find((option) => optionKey(option) === state?.selectedKey) ?? null;
+        const selected = selectedOption(state);
+        const itemNeedsAttention = needsAttention(state);
 
         return (
           <article className="soft-card stack" key={item.id}>
@@ -271,21 +327,19 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
               </div>
               {selected && (
                 <span className="helper">
-                  {!selected.accepted ? "Manual choice" : selected.requiresConfirmation ? "Check" : "Good match"}
+                  {itemNeedsAttention ? "Check" : state?.confirmedByUser ? "Confirmed" : "Auto"}
                 </span>
               )}
             </div>
 
-            {state?.loading ? (
-              <div className="helper">Finding matches…</div>
-            ) : state?.error ? (
-              <div className="helper">Could not match this item yet: {state.error}</div>
+            {state?.error ? (
+              <div className="helper">Could not match this item automatically: {state.error}</div>
             ) : visibleOptions.length === 0 ? (
-              <div className="helper">No reliable match found. You can keep the item and verify it in-store later.</div>
+              <div className="helper">No reliable match found. Keep this item and verify it in-store later.</div>
             ) : (
               <>
                 <label className="helper" htmlFor={`match-${item.id}`}>
-                  {state?.showOther ? "Choose product" : "Matched product"}
+                  {itemNeedsAttention ? "Which product did you mean?" : "Matched product"}
                 </label>
                 <select
                   id={`match-${item.id}`}
@@ -306,15 +360,20 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
                     {selected.sizeValue && selected.sizeUnit ? `${selected.sizeValue} ${selected.sizeUnit} · ` : ""}
                     {Math.round(selected.confidence * 100)}% match
                     {selected.unitPrice && selected.unitPriceUnit ? ` · ${formatMoney(selected.unitPrice)}/${selected.unitPriceUnit}` : ""}
-                    {!selected.accepted ? " · verify this choice" : ""}
                   </div>
+                )}
+
+                {itemNeedsAttention && selected && (
+                  <button className="secondary full" type="button" onClick={() => confirmSuggested(item)}>
+                    Use this match
+                  </button>
                 )}
               </>
             )}
 
-            {!state?.loading && !state?.error && others.length > 0 && (
+            {!state?.error && others.length > 0 && (
               <button className="paste-btn" type="button" onClick={() => toggleOther(item.id)}>
-                {state?.showOther ? "Hide uncertain matches" : "Can't see the right product? Show possible matches"}
+                {state?.showOther ? "Hide possible matches" : "Show other possible matches"}
               </button>
             )}
 
@@ -332,7 +391,13 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
         );
       })}
 
-      <div className="helper">Your selection is saved on this device. Smart Basket will never silently replace a requested brand.</div>
+      <button className="paste-btn" type="button" onClick={() => setShowAll((value) => !value)}>
+        {showAll ? "Hide automatic matches" : "Review automatic matches"}
+      </button>
+
+      <div className="helper">
+        High-confidence matches are accepted automatically. Requested brands stay locked unless you allow alternatives.
+      </div>
     </section>
   );
 }
