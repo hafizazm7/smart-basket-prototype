@@ -45,6 +45,9 @@ export async function GET() {
   const differentSize = candidate("etos", "dreft-700", "Dreft Afwasmiddel", "Dreft", 700, "ml");
   const wipes = candidate("etos", "wipes-1", "Zwitsal Sensitive Billendoekjes", "Zwitsal", 57, "wipe");
   const unrelated = candidate("action", "shampoo-1", "Shampoo verzorging", null, 300, "ml");
+  const cocaColaZero = candidate("action", "coke-zero", "Coca Cola Zero", null, 375, "ml");
+  const cocaColaBrand = candidate("action", "coke-brand", "Coca Cola", null, 375, "ml", 1);
+  const fantaZero = candidate("action", "fanta-zero", "Fanta Zero Sugar", null, 375, "ml", 2);
 
   const locked = rankMatches(
     { query: "Dreft afwasmiddel 350ml", alternativesAllowed: false },
@@ -61,6 +64,14 @@ export async function GET() {
   const rejectUnrelated = rankMatches(
     { query: "melk", alternativesAllowed: false },
     [unrelated],
+  );
+  const metadataFreeBrandLocked = rankMatches(
+    { query: "Coca-Cola Zero 1.5L", alternativesAllowed: false },
+    [cocaColaZero, cocaColaBrand, fantaZero],
+  );
+  const metadataFreeAlternatives = rankMatches(
+    { query: "Coca-Cola Zero 1.5L", alternativesAllowed: true },
+    [cocaColaZero, cocaColaBrand, fantaZero],
   );
 
   const translations = {
@@ -92,6 +103,19 @@ export async function GET() {
       && match.accepted
       && !match.requiresConfirmation
     )),
+    metadataFreeBrandInferred: metadataFreeBrandLocked[0]?.requestedBrand === "coca cola",
+    metadataFreeBrandLocked: metadataFreeBrandLocked.some((match) => (
+      match.record.externalId === "coke-zero" && match.accepted
+    )) && metadataFreeBrandLocked.some((match) => (
+      match.record.externalId === "fanta-zero"
+      && !match.accepted
+      && match.reasons.includes("brand_mismatch")
+    )),
+    metadataFreeAlternativesCanBeEnabled: metadataFreeAlternatives.some((match) => (
+      match.record.externalId === "fanta-zero"
+      && match.accepted
+      && match.reasons.includes("brand_alternative")
+    )),
     retailerSearchTranslationWorks: Object.values(translations).every(Boolean),
   };
 
@@ -113,6 +137,14 @@ export async function GET() {
         accepted: match.accepted,
         confidence: match.confidence,
         requiresConfirmation: match.requiresConfirmation,
+        reasons: match.reasons,
+      })),
+      metadataFreeBrandLocked: metadataFreeBrandLocked.map((match) => ({
+        id: match.record.externalId,
+        accepted: match.accepted,
+        confidence: match.confidence,
+        requiresConfirmation: match.requiresConfirmation,
+        requestedBrand: match.requestedBrand,
         reasons: match.reasons,
       })),
     },
