@@ -6,6 +6,25 @@ function candidateText(record: NormalizedRetailerPrice): string {
   return [record.brand, record.rawName, record.description].filter(Boolean).join(" ");
 }
 
+function inferBrandFromStandaloneProductName(
+  query: string,
+  candidates: RetrievedCandidate[],
+): string | null {
+  const queryTokens = uniqueTokens(query);
+  if (queryTokens.length < 3) return null;
+
+  const prefixes = candidates
+    .map((candidate) => uniqueTokens(candidate.record.rawName))
+    .filter((tokens) => (
+      tokens.length >= 2
+      && tokens.length < queryTokens.length
+      && tokens.every((token, index) => token === queryTokens[index])
+    ))
+    .sort((a, b) => b.length - a.length);
+
+  return prefixes[0]?.join(" ") ?? null;
+}
+
 export function inferRequestedBrand(query: string, candidates: RetrievedCandidate[]): string | null {
   const brands = [...new Set(
     candidates
@@ -13,7 +32,8 @@ export function inferRequestedBrand(query: string, candidates: RetrievedCandidat
       .filter((brand): brand is string => Boolean(brand)),
   )].sort((a, b) => b.length - a.length);
 
-  return brands.find((brand) => phrasePresent(query, brand)) ?? null;
+  return brands.find((brand) => phrasePresent(query, brand))
+    ?? inferBrandFromStandaloneProductName(query, candidates);
 }
 
 function packageFromRecord(record: NormalizedRetailerPrice): RequestedPackage | null {
