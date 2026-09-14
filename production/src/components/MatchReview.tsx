@@ -45,9 +45,11 @@ type MatchState = {
   selectedKey: string | null;
   showOther: boolean;
   confirmedByUser: boolean;
+  keptAsTyped: boolean;
 };
 
 const OVERRIDE_KEY = "smart-basket.match-overrides.v1";
+const KEEP_TYPED_SENTINEL = "__keep_as_typed__";
 const MATCH_CONCURRENCY = 3;
 
 function optionKey(option: MatchOption): string {
@@ -73,9 +75,13 @@ function readOverrides(): Record<string, string> {
 }
 
 function saveOverride(query: string, selectedKey: string) {
-  const overrides = readOverrides();
-  overrides[queryKey(query)] = selectedKey;
-  window.localStorage.setItem(OVERRIDE_KEY, JSON.stringify(overrides));
+  try {
+    const overrides = readOverrides();
+    overrides[queryKey(query)] = selectedKey;
+    window.localStorage.setItem(OVERRIDE_KEY, JSON.stringify(overrides));
+  } catch {
+    // Keep matching usable when browser storage is blocked.
+  }
 }
 
 function allOptions(response: MatchResponse | null): MatchOption[] {
@@ -96,10 +102,10 @@ function selectedOption(state: MatchState | undefined): MatchOption | null {
 
 function needsAttention(state: MatchState | undefined): boolean {
   if (!state || state.loading) return false;
-  if (state.error) return true;
+  if (state.error) return !state.keptAsTyped;
 
   const selected = selectedOption(state);
-  if (!selected) return true;
+  if (!selected) return !state.keptAsTyped;
   if (!selected.accepted && !state.confirmedByUser) return true;
   return selected.requiresConfirmation && !state.confirmedByUser;
 }
@@ -129,13 +135,18 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
       try {
         const response = await loadMatch(item, false);
         const override = readOverrides()[queryKey(item.text)] ?? null;
+        const keptAsTyped = override === KEEP_TYPED_SENTINEL;
         const choices = allOptions(response);
-        const overrideChoice = choices.find((option) => optionKey(option) === override) ?? null;
-        const selectedKey = overrideChoice
-          ? optionKey(overrideChoice)
-          : response.matches[0]
-            ? optionKey(response.matches[0])
-            : null;
+        const overrideChoice = keptAsTyped
+          ? null
+          : choices.find((option) => optionKey(option) === override) ?? null;
+        const selectedKey = keptAsTyped
+          ? null
+          : overrideChoice
+            ? optionKey(overrideChoice)
+            : response.matches[0]
+              ? optionKey(response.matches[0])
+              : null;
 
         entries[index] = [item.id, {
           loading: false,
@@ -145,8 +156,10 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
           selectedKey,
           showOther: Boolean(overrideChoice && !overrideChoice.accepted),
           confirmedByUser: Boolean(overrideChoice),
+          keptAsTyped,
         }] as const;
       } catch (error) {
+        const keptAsTyped = readOverrides()[queryKey(item.text)] === KEEP_TYPED_SENTINEL;
         entries[index] = [item.id, {
           loading: false,
           error: error instanceof Error ? error.message : "Product matching failed.",
@@ -155,6 +168,7 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
           selectedKey: null,
           showOther: false,
           confirmedByUser: false,
+          keptAsTyped,
         }] as const;
       }
     }
@@ -183,6 +197,7 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
       selectedKey: null,
       showOther: false,
       confirmedByUser: false,
+      keptAsTyped: false,
     }])));
 
     void loadInitialMatches(items).then((entries) => {
@@ -198,11 +213,12 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
     const values = Object.values(states);
     const loading = values.some((state) => state.loading);
     const matched = values.filter((state) => Boolean(selectedOption(state))).length;
+    const kept = values.filter((state) => state.keptAsTyped).length;
     const attention = values.filter((state) => needsAttention(state)).length;
-    return { loading, matched, attention };
+    return { loading, matched, kept, attention };
   }, [states]);
 
-  async function toggleAlternatives(item: ReviewItem, allowed: boolean) {
+  async function refreshMatch(item: ReviewItem, allowed: boolean) {
     setStates((current) => ({
       ...current,
       [item.id]: {
@@ -212,11 +228,13 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
           error: null,
           showOther: false,
           confirmedByUser: false,
+          keptAsTyped: false,
         }),
         loading: true,
         error: null,
         alternativesAllowed: allowed,
         confirmedByUser: false,
+        keptAsTyped: false,
       },
     }));
 
@@ -233,6 +251,7 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
           selectedKey,
           showOther: false,
           confirmedByUser: false,
+          keptAsTyped: false,
         },
       }));
     } catch (error) {
@@ -244,10 +263,12 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
             selectedKey: null,
             showOther: false,
             confirmedByUser: false,
+            keptAsTyped: false,
           }),
           loading: false,
           error: error instanceof Error ? error.message : "Product matching failed.",
           alternativesAllowed: allowed,
+          keptAsTyped: false,
         },
       }));
     }
@@ -260,6 +281,7 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
         ...current[item.id],
         selectedKey: key,
         confirmedByUser: true,
+        keptAsTyped: false,
       },
     }));
     saveOverride(item.text, key);
@@ -270,9 +292,26 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
     if (!state?.selectedKey) return;
     setStates((current) => ({
       ...current,
-      [item.id]: { ...current[item.id], confirmedByUser: true },
+      [item.id]: {
+        ...current[item.id],
+        confirmedByUser: true,
+        keptAsTyped: false,
+      },
     }));
     saveOverride(item.text, state.selectedKey);
+  }
+
+  function keepAsTyped(item: ReviewItem) {
+    setStates((current) => ({
+      ...current,
+      [item.id]: {
+        ...current[item.id],
+        selectedKey: null,
+        confirmedByUser: true,
+        keptAsTyped: true,
+      },
+    }));
+    saveOverride(item.text, KEEP_TYPED_SENTINEL);
   }
 
   function toggleOther(itemId: string) {
@@ -303,8 +342,10 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
         </div>
         <div className="helper">
           {summary.attention > 0
-            ? `${summary.matched}/${items.length} items matched automatically · ${summary.attention} need your input.`
-            : `${summary.matched}/${items.length} items matched automatically. Nothing else to do here.`}
+            ? `${summary.matched}/${items.length} items have product matches${summary.kept ? ` · ${summary.kept} kept as typed` : ""} · ${summary.attention} need your input.`
+            : summary.kept > 0
+              ? `${summary.matched}/${items.length} items have product matches · ${summary.kept} kept as typed. Nothing else to do here.`
+              : `${summary.matched}/${items.length} items matched automatically. Nothing else to do here.`}
         </div>
       </div>
 
@@ -325,17 +366,38 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
                 <strong>{item.text}</strong>
                 <div className="helper">Qty {item.quantity}</div>
               </div>
-              {selected && (
+              {selected ? (
                 <span className="helper">
                   {itemNeedsAttention ? "Check" : state?.confirmedByUser ? "Confirmed" : "Auto"}
                 </span>
-              )}
+              ) : state?.keptAsTyped ? (
+                <span className="helper">Kept as typed</span>
+              ) : null}
             </div>
 
             {state?.error ? (
-              <div className="helper">Could not match this item automatically: {state.error}</div>
+              <>
+                <div className="helper">Could not match this item automatically: {state.error}</div>
+                <button
+                  className="secondary full"
+                  type="button"
+                  onClick={() => void refreshMatch(item, state.alternativesAllowed)}
+                >
+                  Try again
+                </button>
+                <button className="paste-btn" type="button" onClick={() => keepAsTyped(item)}>
+                  Keep item as typed
+                </button>
+              </>
+            ) : state?.keptAsTyped ? (
+              <div className="helper">This item will stay exactly as you entered it.</div>
             ) : visibleOptions.length === 0 ? (
-              <div className="helper">No reliable match found. Keep this item and verify it in-store later.</div>
+              <>
+                <div className="helper">No reliable match found. You can keep this item and verify it in-store later.</div>
+                <button className="secondary full" type="button" onClick={() => keepAsTyped(item)}>
+                  Keep item as typed
+                </button>
+              </>
             ) : (
               <>
                 <label className="helper" htmlFor={`match-${item.id}`}>
@@ -371,18 +433,18 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
               </>
             )}
 
-            {!state?.error && others.length > 0 && (
+            {!state?.error && !state?.keptAsTyped && others.length > 0 && (
               <button className="paste-btn" type="button" onClick={() => toggleOther(item.id)}>
                 {state?.showOther ? "Hide possible matches" : "Show other possible matches"}
               </button>
             )}
 
-            {response?.requestedBrand && (
+            {response?.requestedBrand && !state?.keptAsTyped && (
               <label className="helper row" style={{ gap: 8 }}>
                 <input
                   type="checkbox"
                   checked={state?.alternativesAllowed ?? false}
-                  onChange={(event) => void toggleAlternatives(item, event.target.checked)}
+                  onChange={(event) => void refreshMatch(item, event.target.checked)}
                 />
                 Allow alternatives to {response.requestedBrand}
               </label>
