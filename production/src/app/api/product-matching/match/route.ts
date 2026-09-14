@@ -1,5 +1,5 @@
 import { rankMatches } from "@/modules/matching/match";
-import { extractRequestedPackage } from "@/modules/matching/text";
+import { extractRequestedPackage, toRetailerSearchQuery } from "@/modules/matching/text";
 import type { RetrievedCandidate } from "@/modules/matching/types";
 import { getRetailerAdapter } from "@/modules/retailers/official-search-adapter";
 import { RETAILER_KEYS } from "@/modules/retailers/sources";
@@ -38,8 +38,9 @@ export async function GET(request: Request) {
     return Response.json({ ok: false, error: "No supported retailers selected." }, { status: 400 });
   }
 
+  const searchQuery = toRetailerSearchQuery(query);
   const settled = await Promise.allSettled(
-    retailers.map(async (retailer) => getRetailerAdapter(retailer).searchNormalized(query)),
+    retailers.map(async (retailer) => getRetailerAdapter(retailer).searchNormalized(searchQuery)),
   );
 
   const candidates: RetrievedCandidate[] = [];
@@ -68,12 +69,13 @@ export async function GET(request: Request) {
     };
   });
 
+  const requestedPackage = extractRequestedPackage(query);
   const ranked = rankMatches(
     {
       query,
       brand,
       alternativesAllowed,
-      requestedPackage: extractRequestedPackage(query),
+      requestedPackage,
     },
     candidates,
   );
@@ -84,9 +86,10 @@ export async function GET(request: Request) {
   return Response.json({
     ok: accepted.length > 0,
     query,
+    searchQuery,
     requestedBrand,
     alternativesAllowed,
-    requestedPackage: extractRequestedPackage(query),
+    requestedPackage,
     searchedAt: new Date().toISOString(),
     sources,
     totalCandidates: candidates.length,
