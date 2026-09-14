@@ -40,12 +40,13 @@ function candidate(
 export async function GET() {
   const dreft = candidate("ah", "dreft-350", "Dreft Platinum Afwasmiddel Original", "Dreft", 350, "ml");
   const fairy = candidate("kruidvat", "fairy-383", "Fairy Original Afwasmiddel", "Fairy", 383, "ml");
+  const wrongUnit = candidate("aldi", "dreft-350g", "Dreft Afwasmiddel", "Dreft", 350, "g");
   const wipes = candidate("etos", "wipes-1", "Zwitsal Sensitive Billendoekjes", "Zwitsal", 57, "wipe");
-  const unrelated = candidate("action", "shampoo-1", "Shampoo verzorging", null, 300, "ml", 8);
+  const unrelated = candidate("action", "shampoo-1", "Shampoo verzorging", null, 300, "ml");
 
   const locked = rankMatches(
     { query: "Dreft afwasmiddel 350ml", alternativesAllowed: false },
-    [dreft, fairy],
+    [dreft, fairy, wrongUnit],
   );
   const withAlternatives = rankMatches(
     { query: "Dreft afwasmiddel 350ml", alternativesAllowed: true },
@@ -76,7 +77,8 @@ export async function GET() {
     alternativesCanBeEnabled: withAlternatives.some((match) => match.record.externalId === "fairy-383" && match.accepted),
     exactBrandRanksFirst: withAlternatives[0]?.record.externalId === "dreft-350",
     dutchEnglishSynonymWorks: synonym[0]?.accepted === true,
-    unrelatedCandidateRejected: rejectUnrelated[0]?.accepted === false,
+    topRankUnrelatedCandidateRejected: rejectUnrelated[0]?.accepted === false,
+    incompatibleUnitRejected: locked.some((match) => match.record.externalId === "dreft-350g" && !match.accepted),
     retailerSearchTranslationWorks: Object.values(translations).every(Boolean),
   };
 
