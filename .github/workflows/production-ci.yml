@@ -25,3 +25,16 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+      - name: Run product matching self-check
+        run: |
+          npm start -- -p 3001 > /tmp/smart-basket-next.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3001/api/product-matching/status -o /tmp/matching-status.json; then
+              break
+            fi
+            sleep 1
+          done
+          cat /tmp/matching-status.json
+          node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('/tmp/matching-status.json','utf8')); if(!x.ok){process.exit(1)}"
