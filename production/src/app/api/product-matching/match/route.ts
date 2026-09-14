@@ -7,6 +7,8 @@ import type { RetailerKey } from "@/modules/retailers/types";
 
 export const dynamic = "force-dynamic";
 
+const RETAILER_MATCH_TIMEOUT_MS = 8_000;
+
 function selectedRetailers(requested: string | null): RetailerKey[] {
   if (!requested || requested === "all") return RETAILER_KEYS;
   return [...new Set(
@@ -19,6 +21,19 @@ function selectedRetailers(requested: string | null): RetailerKey[] {
 
 function booleanParam(value: string | null): boolean {
   return ["1", "true", "yes", "y"].includes((value ?? "").trim().toLowerCase());
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function serializeMatch(match: RankedMatch, accepted: boolean) {
@@ -61,7 +76,11 @@ export async function GET(request: Request) {
 
   const searchQuery = toRetailerSearchQuery(query);
   const settled = await Promise.allSettled(
-    retailers.map(async (retailer) => getRetailerAdapter(retailer).searchNormalized(searchQuery)),
+    retailers.map((retailer) => withTimeout(
+      getRetailerAdapter(retailer).searchNormalized(searchQuery),
+      RETAILER_MATCH_TIMEOUT_MS,
+      `${retailer.toUpperCase()} search`,
+    )),
   );
 
   const candidates: RetrievedCandidate[] = [];
