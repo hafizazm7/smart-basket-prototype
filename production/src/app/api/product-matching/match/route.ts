@@ -1,6 +1,6 @@
 import { rankMatches } from "@/modules/matching/match";
 import { extractRequestedPackage, toRetailerSearchQuery } from "@/modules/matching/text";
-import type { RetrievedCandidate } from "@/modules/matching/types";
+import type { RankedMatch, RetrievedCandidate } from "@/modules/matching/types";
 import { getRetailerAdapter } from "@/modules/retailers/official-search-adapter";
 import { RETAILER_KEYS } from "@/modules/retailers/sources";
 import type { RetailerKey } from "@/modules/retailers/types";
@@ -19,6 +19,27 @@ function selectedRetailers(requested: string | null): RetailerKey[] {
 
 function booleanParam(value: string | null): boolean {
   return ["1", "true", "yes", "y"].includes((value ?? "").trim().toLowerCase());
+}
+
+function serializeMatch(match: RankedMatch, accepted: boolean) {
+  return {
+    retailer: match.retailer,
+    externalId: match.record.externalId,
+    name: match.record.rawName,
+    brand: match.record.brand,
+    description: match.record.description,
+    price: match.record.price,
+    sizeValue: match.record.sizeValue,
+    sizeUnit: match.record.sizeUnit,
+    unitPrice: match.record.unitPrice,
+    unitPriceUnit: match.record.unitPriceUnit,
+    promotion: match.record.promotion?.label ?? null,
+    confidence: match.confidence,
+    accepted,
+    requiresConfirmation: accepted ? match.requiresConfirmation : true,
+    reasons: match.reasons,
+    sourceUrl: match.record.sourceUrl,
+  };
 }
 
 export async function GET(request: Request) {
@@ -82,6 +103,11 @@ export async function GET(request: Request) {
 
   const accepted = ranked.filter((match) => match.accepted);
   const requestedBrand = ranked[0]?.requestedBrand ?? brand;
+  const manualCandidates = ranked.filter((match) => (
+    !match.accepted
+    && !match.reasons.includes("brand_mismatch")
+    && !match.reasons.includes("unit_incompatible")
+  ));
 
   return Response.json({
     ok: accepted.length > 0,
@@ -94,23 +120,8 @@ export async function GET(request: Request) {
     sources,
     totalCandidates: candidates.length,
     acceptedMatches: accepted.length,
-    matches: accepted.slice(0, 25).map((match) => ({
-      retailer: match.retailer,
-      externalId: match.record.externalId,
-      name: match.record.rawName,
-      brand: match.record.brand,
-      description: match.record.description,
-      price: match.record.price,
-      sizeValue: match.record.sizeValue,
-      sizeUnit: match.record.sizeUnit,
-      unitPrice: match.record.unitPrice,
-      unitPriceUnit: match.record.unitPriceUnit,
-      promotion: match.record.promotion?.label ?? null,
-      confidence: match.confidence,
-      requiresConfirmation: match.requiresConfirmation,
-      reasons: match.reasons,
-      sourceUrl: match.record.sourceUrl,
-    })),
+    matches: accepted.slice(0, 25).map((match) => serializeMatch(match, true)),
+    otherCandidates: manualCandidates.slice(0, 10).map((match) => serializeMatch(match, false)),
     rejectedPreview: ranked
       .filter((match) => !match.accepted)
       .slice(0, 5)
