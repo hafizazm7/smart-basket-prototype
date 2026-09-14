@@ -1,4 +1,5 @@
 import { rankMatches } from "@/modules/matching/match";
+import { toRetailerSearchQuery } from "@/modules/matching/text";
 import type { RetrievedCandidate } from "@/modules/matching/types";
 import type { RetailerKey } from "@/modules/retailers/types";
 
@@ -59,6 +60,15 @@ export async function GET() {
     [unrelated],
   );
 
+  const translations = {
+    babyWipes: toRetailerSearchQuery("baby wipes") === "billendoekjes",
+    carrots: toRetailerSearchQuery("Carrots") === "wortels",
+    lemons: toRetailerSearchQuery("Lemons") === "citroenen",
+    mayonnaise: toRetailerSearchQuery("Mayonnaise") === "mayonaise",
+    milk: toRetailerSearchQuery("milk") === "melk",
+    brandedSizePreserved: toRetailerSearchQuery("Dreft dishwashing liquid 350ml") === "Dreft afwasmiddel 350ml",
+  };
+
   const checks = {
     requestedBrandInferred: locked[0]?.requestedBrand === "Dreft",
     requestedBrandLocked: locked.some((match) => match.record.externalId === "dreft-350" && match.accepted)
@@ -67,12 +77,14 @@ export async function GET() {
     exactBrandRanksFirst: withAlternatives[0]?.record.externalId === "dreft-350",
     dutchEnglishSynonymWorks: synonym[0]?.accepted === true,
     unrelatedCandidateRejected: rejectUnrelated[0]?.accepted === false,
+    retailerSearchTranslationWorks: Object.values(translations).every(Boolean),
   };
 
   return Response.json({
     ok: Object.values(checks).every(Boolean),
     checkedAt: new Date().toISOString(),
     checks,
+    translations,
     samples: {
       locked: locked.map((match) => ({
         id: match.record.externalId,
