@@ -452,7 +452,16 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
                 </button>
               </>
             ) : state?.keptAsTyped ? (
-              <div className="helper">This item will stay exactly as you entered it.</div>
+              <>
+                <div className="helper">This item will stay exactly as you entered it.</div>
+                <button
+                  className="secondary full"
+                  type="button"
+                  onClick={() => void refreshMatch(item, false)}
+                >
+                  Find a product match again
+                </button>
+              </>
             ) : visibleOptions.length === 0 ? (
               <>
                 <div className="helper">No reliable match found. You can keep this item and verify it in-store later.</div>
@@ -493,6 +502,12 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
                   </button>
                 )}
               </>
+            )}
+
+            {!state?.error && !state?.keptAsTyped && visibleOptions.length > 0 && (
+              <button className="paste-btn" type="button" onClick={() => keepAsTyped(item)}>
+                Keep item as typed
+              </button>
             )}
 
             {!state?.error && !state?.keptAsTyped && others.length > 0 && (
