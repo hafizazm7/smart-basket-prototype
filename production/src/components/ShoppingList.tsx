@@ -138,7 +138,7 @@ export default function ShoppingList() {
       return;
     }
     setReviewItems(items.map((item) => ({ ...item })));
-    setNotice("Product matching started. Review the matches below before basket optimization.");
+    setNotice("Matching products automatically. Smart Basket will only ask if something needs your input.");
   }
 
   function handlePhotoUpdate() {
