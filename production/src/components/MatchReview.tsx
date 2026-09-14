@@ -28,6 +28,7 @@ type MatchOption = {
 type MatchResponse = {
   ok: boolean;
   query: string;
+  searchQuery?: string;
   requestedBrand: string | null;
   alternativesAllowed: boolean;
   acceptedMatches: number;
@@ -43,6 +44,7 @@ type MatchState = {
 };
 
 const OVERRIDE_KEY = "smart-basket.match-overrides.v1";
+const MATCH_CONCURRENCY = 3;
 
 function optionKey(option: MatchOption): string {
   return `${option.retailer}:${option.externalId ?? option.name}`;
@@ -83,6 +85,52 @@ async function loadMatch(item: ReviewItem, alternativesAllowed: boolean): Promis
   return response.json() as Promise<MatchResponse>;
 }
 
+async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [string, MatchState]>> {
+  const entries: Array<readonly [string, MatchState] | undefined> = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+
+      const item = items[index];
+      try {
+        const response = await loadMatch(item, false);
+        const override = readOverrides()[queryKey(item.text)] ?? null;
+        const selectedKey = response.matches.some((option) => optionKey(option) === override)
+          ? override
+          : response.matches[0]
+            ? optionKey(response.matches[0])
+            : null;
+
+        entries[index] = [item.id, {
+          loading: false,
+          error: null,
+          response,
+          alternativesAllowed: false,
+          selectedKey,
+        }] as const;
+      } catch (error) {
+        entries[index] = [item.id, {
+          loading: false,
+          error: error instanceof Error ? error.message : "Product matching failed.",
+          response: null,
+          alternativesAllowed: false,
+          selectedKey: null,
+        }] as const;
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(MATCH_CONCURRENCY, items.length) }, () => worker()),
+  );
+
+  return entries.filter((entry): entry is readonly [string, MatchState] => Boolean(entry));
+}
+
 export default function MatchReview({ items }: { items: ReviewItem[] }) {
   const [states, setStates] = useState<Record<string, MatchState>>({});
 
@@ -97,32 +145,7 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
       selectedKey: null,
     }])));
 
-    Promise.all(items.map(async (item) => {
-      try {
-        const response = await loadMatch(item, false);
-        const override = readOverrides()[queryKey(item.text)] ?? null;
-        const selectedKey = response.matches.some((option) => optionKey(option) === override)
-          ? override
-          : response.matches[0]
-            ? optionKey(response.matches[0])
-            : null;
-        return [item.id, {
-          loading: false,
-          error: null,
-          response,
-          alternativesAllowed: false,
-          selectedKey,
-        }] as const;
-      } catch (error) {
-        return [item.id, {
-          loading: false,
-          error: error instanceof Error ? error.message : "Product matching failed.",
-          response: null,
-          alternativesAllowed: false,
-          selectedKey: null,
-        }] as const;
-      }
-    })).then((entries) => {
+    void loadInitialMatches(items).then((entries) => {
       if (!cancelled) setStates(Object.fromEntries(entries));
     });
 
