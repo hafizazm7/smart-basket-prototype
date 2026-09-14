@@ -71,11 +71,9 @@ function scoreCandidate(
 
   let brandScore = 0.7;
   let lockedBrandMismatch = false;
-  let exactBrandMatch = false;
   if (requestedBrand) {
     if (brandMatches(record, requestedBrand)) {
       brandScore = 1;
-      exactBrandMatch = true;
       reasons.push("brand_exact");
     } else if (alternativesAllowed) {
       brandScore = 0.25;
@@ -103,14 +101,17 @@ function scoreCandidate(
   if (queryTokens.length > 0 && phrasePresent(text, queryTokens.join(" "))) confidence += 0.04;
   confidence = clamp(confidence);
 
-  const semanticRelevant = queryTokens.length === 0 || textHits > 0 || exactBrandMatch;
+  // An exact brand alone is not enough when the user also named a product.
+  // For example, "Dreft shampoo" must not match "Dreft afwasmiddel".
+  const semanticRelevant = queryTokens.length === 0 || textHits > 0;
   const accepted = (
     semanticRelevant
     && !lockedBrandMismatch
     && !packageScore.incompatible
     && confidence >= 0.44
   );
-  const requiresConfirmation = accepted && confidence < 0.82;
+  const requestedSizeNeedsCheck = requestedPackage !== null && packageScore.reason !== "size_exact";
+  const requiresConfirmation = accepted && (confidence < 0.82 || requestedSizeNeedsCheck);
 
   return {
     ...candidate,
