@@ -41,12 +41,14 @@ export async function GET() {
   const dreft = candidate("ah", "dreft-350", "Dreft Platinum Afwasmiddel Original", "Dreft", 350, "ml");
   const fairy = candidate("kruidvat", "fairy-383", "Fairy Original Afwasmiddel", "Fairy", 383, "ml");
   const wrongUnit = candidate("aldi", "dreft-350g", "Dreft Afwasmiddel", "Dreft", 350, "g");
+  const wrongProduct = candidate("action", "dreft-shampoo", "Dreft Shampoo", "Dreft", 350, "ml");
+  const differentSize = candidate("etos", "dreft-700", "Dreft Afwasmiddel", "Dreft", 700, "ml");
   const wipes = candidate("etos", "wipes-1", "Zwitsal Sensitive Billendoekjes", "Zwitsal", 57, "wipe");
   const unrelated = candidate("action", "shampoo-1", "Shampoo verzorging", null, 300, "ml");
 
   const locked = rankMatches(
     { query: "Dreft afwasmiddel 350ml", alternativesAllowed: false },
-    [dreft, fairy, wrongUnit],
+    [dreft, fairy, wrongUnit, wrongProduct, differentSize],
   );
   const withAlternatives = rankMatches(
     { query: "Dreft afwasmiddel 350ml", alternativesAllowed: true },
@@ -78,7 +80,18 @@ export async function GET() {
     exactBrandRanksFirst: withAlternatives[0]?.record.externalId === "dreft-350",
     dutchEnglishSynonymWorks: synonym[0]?.accepted === true,
     topRankUnrelatedCandidateRejected: rejectUnrelated[0]?.accepted === false,
+    sameBrandWrongProductRejected: locked.some((match) => match.record.externalId === "dreft-shampoo" && !match.accepted),
     incompatibleUnitRejected: locked.some((match) => match.record.externalId === "dreft-350g" && !match.accepted),
+    differentRequestedSizeNeedsConfirmation: locked.some((match) => (
+      match.record.externalId === "dreft-700"
+      && match.accepted
+      && match.requiresConfirmation
+    )),
+    exactRequestedSizeCanAutoMatch: locked.some((match) => (
+      match.record.externalId === "dreft-350"
+      && match.accepted
+      && !match.requiresConfirmation
+    )),
     retailerSearchTranslationWorks: Object.values(translations).every(Boolean),
   };
 
@@ -92,12 +105,14 @@ export async function GET() {
         id: match.record.externalId,
         accepted: match.accepted,
         confidence: match.confidence,
+        requiresConfirmation: match.requiresConfirmation,
         reasons: match.reasons,
       })),
       alternatives: withAlternatives.map((match) => ({
         id: match.record.externalId,
         accepted: match.accepted,
         confidence: match.confidence,
+        requiresConfirmation: match.requiresConfirmation,
         reasons: match.reasons,
       })),
     },
