@@ -14,8 +14,8 @@ const TOKEN_ALIASES: Record<string, string> = {
   lemons: "citroen",
   citroenen: "citroen",
   citroen: "citroen",
-  "babywipe": "babydoekje",
-  "babywipes": "babydoekje",
+  babywipe: "babydoekje",
+  babywipes: "babydoekje",
   wipes: "babydoekje",
   wipe: "babydoekje",
   billendoekjes: "babydoekje",
@@ -52,6 +52,8 @@ const STOP_TOKENS = new Set([
   "x",
 ]);
 
+const PACKAGE_TOKEN = /^(?:\d+x)?\d+(?:\.\d+)?(?:kg|g|gr|l|ml|cl|stuks?|stuk|doekjes?|wipes?)$/;
+
 export function normalizeText(input: string): string {
   return input
     .toLowerCase()
@@ -71,7 +73,12 @@ export function tokenize(input: string): string[] {
   return normalizeText(input)
     .split(" ")
     .map(canonicalToken)
-    .filter((token) => token.length > 1 && !STOP_TOKENS.has(token) && !/^\d+(?:\.\d+)?$/.test(token));
+    .filter((token) => (
+      token.length > 1
+      && !STOP_TOKENS.has(token)
+      && !/^\d+(?:\.\d+)?$/.test(token)
+      && !PACKAGE_TOKEN.test(token)
+    ));
 }
 
 export function uniqueTokens(input: string): string[] {
