@@ -125,11 +125,46 @@ function absoluteUrl(input?: string): string | null {
   }
 }
 
+function titleCaseSlug(value: string): string {
+  return value
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.length <= 2 ? part.toUpperCase() : `${part[0].toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+function productNameFromHref(input?: string, code?: string): string | null {
+  if (!input) return null;
+
+  try {
+    const url = new URL(input, "https://www.action.com");
+    const ignored = new Set(["nl-nl", "nl", "p", "product", "producten"]);
+    const candidates = url.pathname
+      .split("/")
+      .map((part) => decodeURIComponent(part).trim())
+      .filter((part) => part && !ignored.has(part.toLowerCase()) && !/^\d+$/.test(part))
+      .filter((part) => /[a-z]/i.test(part));
+
+    const slug = candidates.sort((a, b) => b.length - a.length)[0];
+    if (!slug) return null;
+
+    const withoutCode = code
+      ? slug.replace(new RegExp(`[-_]?${code.replace(/[^0-9a-z]/gi, "")}$`, "i"), "")
+      : slug;
+    const name = titleCaseSlug(withoutCode);
+    return name.length >= 4 ? name : null;
+  } catch {
+    return null;
+  }
+}
+
 function mapProduct(product: ActionProduct, observedAt: string): NormalizedRetailerPrice | null {
   const brand = product.brandInfo?.name?.trim() || null;
   const category = product.category?.trim() || product.aisleName?.trim() || null;
   const pack = product.description?.trim() || null;
-  const name = [brand, category].filter(Boolean).join(" ").trim() || pack;
+  const hrefName = productNameFromHref(product.href, product.code);
+  const fallbackName = [brand, category].filter(Boolean).join(" ").trim() || pack;
+  const name = hrefName || fallbackName;
   const price = productPrice(product);
   if (!name || !price || price <= 0) return null;
 
