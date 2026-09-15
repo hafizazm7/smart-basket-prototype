@@ -58,6 +58,8 @@ export async function GET() {
   const halfFullMilk = candidate("aldi", "half-full-milk", "Milsani Houdbare halfvolle melk", "Milsani", 1, "l");
   const wrongRetailerIdentity = candidate("etos", "ah-milk-at-etos", "AH Volle melk", "AH", 1, "l");
   const coffeeMilk = candidate("kruidvat", "coffee-milk", "Friesche Vlag Goudband Volle Koffiemelk", null, 455, "ml");
+  const organicMilk = candidate("ah", "organic-milk", "AH Biologisch Volle melk", "AH Biologisch", 1, "l");
+  const etosGenericMilk = candidate("etos", "etos-generic-milk", "Arla Volle melk", "Arla", 1, "l");
 
   const locked = rankMatches(
     { query: "Dreft afwasmiddel 350ml", alternativesAllowed: false },
@@ -93,7 +95,7 @@ export async function GET() {
   );
   const milkVariants = rankMatches(
     { query: "Volle melk 1L", alternativesAllowed: false },
-    [fullMilk, halfFullMilk, wrongRetailerIdentity, coffeeMilk],
+    [fullMilk, halfFullMilk, wrongRetailerIdentity, coffeeMilk, organicMilk, etosGenericMilk],
   );
   const retailerQuotaSample = retainMatchesPerRetailer(locked, 1);
 
@@ -192,6 +194,17 @@ export async function GET() {
       match.record.externalId === "coffee-milk"
       && !match.accepted
       && match.reasons.includes("variant_conflict")
+    )),
+    unspecifiedVariantNeedsConfirmation: milkVariants.some((match) => (
+      match.record.externalId === "organic-milk"
+      && match.accepted
+      && match.requiresConfirmation
+      && match.reasons.includes("variant_unspecified")
+    )) && milkVariants[0]?.record.externalId === "full-milk",
+    groceryMilkExcludedFromDrugstores: milkVariants.some((match) => (
+      match.record.externalId === "etos-generic-milk"
+      && !match.accepted
+      && match.reasons.includes("retailer_category_conflict")
     )),
     wrongRetailerIdentityRejected: milkVariants.some((match) => (
       match.record.externalId === "ah-milk-at-etos"

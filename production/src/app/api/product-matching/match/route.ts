@@ -138,6 +138,7 @@ export async function GET(request: Request) {
     && !match.reasons.includes("unit_incompatible")
     && !match.reasons.includes("variant_conflict")
     && !match.reasons.includes("retailer_identity_conflict")
+    && !match.reasons.includes("retailer_category_conflict")
   ));
   const responseMatches = retainMatchesPerRetailer(accepted, ACCEPTED_MATCHES_PER_RETAILER);
   const responseOtherCandidates = retainMatchesPerRetailer(

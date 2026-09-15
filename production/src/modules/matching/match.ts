@@ -76,6 +76,8 @@ const MILK_PRODUCT_FORMS = new Set([
   "poeder",
 ]);
 
+const OPTIONAL_VARIANT_TOKENS = new Set(["biologisch", "houdbare"]);
+
 const RETAILER_IDENTITIES: Record<RetrievedCandidate["retailer"], string[]> = {
   ah: ["ah", "albert heijn"],
   aldi: ["aldi"],
@@ -209,6 +211,20 @@ function hasRetailerIdentityConflict(candidate: RetrievedCandidate): boolean {
   ));
 }
 
+function hasUnspecifiedVariant(queryTokens: string[], candidateTokens: Set<string>): boolean {
+  return [...OPTIONAL_VARIANT_TOKENS].some((token) => (
+    candidateTokens.has(token) && !queryTokens.includes(token)
+  ));
+}
+
+function hasRetailerCategoryConflict(
+  queryTokens: string[],
+  candidate: RetrievedCandidate,
+): boolean {
+  return queryTokens.includes("melk")
+    && (candidate.retailer === "etos" || candidate.retailer === "kruidvat");
+}
+
 function scoreCandidate(
   request: MatchRequest,
   candidate: RetrievedCandidate,
@@ -270,6 +286,10 @@ function scoreCandidate(
   if (variantConflict) reasons.push("variant_conflict");
   const retailerIdentityConflict = hasRetailerIdentityConflict(candidate);
   if (retailerIdentityConflict) reasons.push("retailer_identity_conflict");
+  const unspecifiedVariant = hasUnspecifiedVariant(queryTokens, candidateTokens);
+  if (unspecifiedVariant) reasons.push("variant_unspecified");
+  const retailerCategoryConflict = hasRetailerCategoryConflict(queryTokens, candidate);
+  if (retailerCategoryConflict) reasons.push("retailer_category_conflict");
   const accepted = (
     semanticRelevant
     && !lockedBrandMismatch
@@ -277,10 +297,15 @@ function scoreCandidate(
     && !productFormConflict
     && !variantConflict
     && !retailerIdentityConflict
+    && !retailerCategoryConflict
     && confidence >= 0.44
   );
   const requestedSizeNeedsCheck = requestedPackage !== null && packageScore.reason !== "size_exact";
-  const requiresConfirmation = accepted && (confidence < 0.82 || requestedSizeNeedsCheck);
+  const requiresConfirmation = accepted && (
+    confidence < 0.82
+    || requestedSizeNeedsCheck
+    || unspecifiedVariant
+  );
 
   return {
     ...candidate,
@@ -301,6 +326,9 @@ export function rankMatches(request: MatchRequest, candidates: RetrievedCandidat
     .map((candidate) => scoreCandidate(request, candidate, requestedBrand, requestedPackage))
     .sort((a, b) => {
       if (a.accepted !== b.accepted) return a.accepted ? -1 : 1;
+      if (a.requiresConfirmation !== b.requiresConfirmation) {
+        return a.requiresConfirmation ? 1 : -1;
+      }
       return b.confidence - a.confidence;
     });
 }

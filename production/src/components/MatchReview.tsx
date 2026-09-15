@@ -69,7 +69,7 @@ type StoredOverride = string | {
 };
 
 const OVERRIDE_KEY = "smart-basket.match-overrides.v1";
-const KEEP_TYPED_SENTINEL = "__keep_as_typed__";
+const KEEP_TYPED_SENTINEL = "__keep_as_typed_v2__";
 const MATCH_CONCURRENCY = 3;
 
 function optionKey(option: MatchOption): string {
