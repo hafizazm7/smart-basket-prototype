@@ -72,7 +72,47 @@ function StoreLines({ store }: { store: StoreBasket }) {
   );
 }
 
-function BasketPlanView({ plan }: { plan: BasketPlan }) {
+function UnpricedLines({ items }: { items: OptimizerItem[] }) {
+  if (items.length === 0) return null;
+
+  return (
+    <section className="store-group unpriced-store-group" aria-label="Items to check in store">
+      <div className="row space store-heading unpriced-heading">
+        <div>
+          <div className="store-name">Check in store</div>
+          <div className="helper">{items.length} item{items.length === 1 ? "" : "s"} · price not included</div>
+        </div>
+      </div>
+
+      <div className="basket-lines">
+        {items.map((item) => (
+          <article className="basket-line" key={item.id}>
+            <div className="row space basket-line-top">
+              <strong>{item.query}</strong>
+              <strong className="price-unavailable">Price unavailable</strong>
+            </div>
+            <div className="helper">
+              Qty {item.quantity} · {item.keptAsTyped ? "kept as typed" : "no usable current price"} · check in store
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BasketPlanView({
+  plan,
+  unpricedItems,
+  totalItems,
+}: {
+  plan: BasketPlan | null;
+  unpricedItems: OptimizerItem[];
+  totalItems: number;
+}) {
+  const pricedItems = plan?.coveredItems ?? 0;
+  const storeCount = plan?.stores.length ?? 0;
+
   return (
     <div className="stack">
       <section className="card compare-basket-card">
@@ -80,12 +120,16 @@ function BasketPlanView({ plan }: { plan: BasketPlan }) {
           <div>
             <div className="photo-title">Recommended basket</div>
             <div className="helper">
-              {plan.stores.length} store{plan.stores.length === 1 ? "" : "s"} · {plan.coveredItems}/{plan.totalItems} items priced
+              {totalItems}/{totalItems} items shown · {pricedItems} priced · {storeCount} store{storeCount === 1 ? "" : "s"}
             </div>
           </div>
-          <div className="compare-total">{formatMoney(plan.total)}</div>
+          <div className="compare-total-wrap">
+            <div className="compare-total-label">Priced total</div>
+            <div className="compare-total">{plan ? formatMoney(plan.total) : "—"}</div>
+          </div>
         </div>
-        {plan.stores.map((store) => <StoreLines store={store} key={store.retailer} />)}
+        {plan?.stores.map((store) => <StoreLines store={store} key={store.retailer} />)}
+        <UnpricedLines items={unpricedItems} />
       </section>
     </div>
   );
@@ -153,26 +197,14 @@ export default function CompareResults({
           </section>
         ) : (
           <section className="warning-card" aria-live="polite">
-            <strong>{pricedItems}/{items.length} items have usable prices</strong>
-            <div className="helper">Totals only include priced items, so Smart Basket does not claim a full-basket saving.</div>
+            <strong>All {items.length} items are shown below</strong>
+            <div className="helper">{pricedItems} item{pricedItems === 1 ? " has" : "s have"} a usable price. The priced total excludes {result.unpricedItems.length} item{result.unpricedItems.length === 1 ? "" : "s"} to check in store, so Smart Basket does not claim a full-basket saving.</div>
           </section>
         )
       ) : (
         <section className="warning-card" aria-live="polite">
-          <strong>No usable live prices yet</strong>
-          <div className="helper">Return to the list and review the product matches.</div>
-        </section>
-      )}
-
-      {result.unpricedItems.length > 0 && (
-        <section className="soft-card unpriced-card">
-          <div className="photo-title">Check in store</div>
-          <div className="helper">These items are excluded from the total:</div>
-          <ul>
-            {result.unpricedItems.map((item) => (
-              <li key={item.id}>{item.query}{item.keptAsTyped ? " · kept as typed" : " · no usable current price"}</li>
-            ))}
-          </ul>
+          <strong>All {items.length} items are shown below</strong>
+          <div className="helper">No items have a usable live price yet. Check them in store; no basket total or saving is claimed.</div>
         </section>
       )}
 
@@ -183,9 +215,7 @@ export default function CompareResults({
       </div>
 
       {tab === "recommended" && (
-        result.recommended
-          ? <BasketPlanView plan={result.recommended} />
-          : <div className="card list-empty">No recommended basket is available yet.</div>
+        <BasketPlanView plan={result.recommended} unpricedItems={result.unpricedItems} totalItems={items.length} />
       )}
 
       {tab === "by-store" && (

@@ -331,14 +331,6 @@ h1 {
   border-radius: 17px;
   background: #fff9e8;
 }
-.unpriced-card { margin-bottom: 14px; }
-.unpriced-card ul {
-  margin: 9px 0 0;
-  padding-left: 18px;
-  color: #526058;
-  font-size: 12px;
-  line-height: 1.55;
-}
 .compare-tabs {
   display: grid;
   grid-template-columns: 1.3fr 1fr 1.15fr;
@@ -365,9 +357,12 @@ h1 {
 }
 .compare-basket-card { padding: 0; overflow: hidden; }
 .compare-card-heading { padding: 16px; }
+.compare-total-wrap { flex: 0 0 auto; text-align: right; }
+.compare-total-label { color: var(--muted); font-size: 10px; font-weight: 750; }
 .compare-total { color: var(--green-dark); font-size: 20px; font-weight: 900; }
 .store-group { border-top: 1px solid var(--line); }
 .store-heading { padding: 14px 16px 10px; background: var(--green-softer); }
+.unpriced-heading { background: #fff9e8; }
 .store-name { font-weight: 850; }
 .basket-lines { padding: 0 16px; }
 .basket-line { padding: 13px 0; border-top: 1px solid var(--line); }
@@ -379,6 +374,7 @@ h1 {
   overflow-wrap: anywhere;
 }
 .basket-line-top strong:last-child { flex: 0 0 auto; }
+.price-unavailable { color: var(--muted); font-size: 11px; }
 .promo-note {
   margin-top: 5px;
   color: var(--green-dark);
