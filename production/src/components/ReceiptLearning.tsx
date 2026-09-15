@@ -101,7 +101,7 @@ export default function ReceiptLearning({
       const receiptLabel = selections[item.id]?.trim();
       return receiptLabel ? [{ query: item.text, receiptLabel }] : [];
     });
-    const saved = saveReceiptMappings(mappings);
+    const saved = saveReceiptMappings(mappings, items.map((item) => item.text));
     setMessage(saved
       ? `${saved} product match${saved === 1 ? "" : "es"} learned for future lists.`
       : "Select at least one receipt product to learn.");
@@ -164,7 +164,7 @@ export default function ReceiptLearning({
             <div className="helper">Reading receipt{progress ? ` · ${progress}%` : "…"}</div>
           ) : null}
 
-          <div className="helper">Your photo stays on this device and is not uploaded.</div>
+          <div className="helper">Your photo stays on this device and is not uploaded. Saving a rescan replaces earlier receipt links for this list.</div>
 
           {receiptProducts.length > 0 && (
             <div className="receipt-links">

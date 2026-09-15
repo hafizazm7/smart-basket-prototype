@@ -3,6 +3,8 @@ import type { RequestedPackage } from "./types";
 const TOKEN_ALIASES: Record<string, string> = {
   milk: "melk",
   melk: "melk",
+  vol: "volle",
+  volle: "volle",
   mayonnaise: "mayonaise",
   mayo: "mayonaise",
   mayonaise: "mayonaise",

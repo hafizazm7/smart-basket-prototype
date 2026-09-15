@@ -12,14 +12,17 @@ export type ReceiptSuggestion = {
   automatic: boolean;
 };
 
-const NON_PRODUCT_LINE = /\b(?:albert heijn|aldi|action|etos|kruidvat|receipt|kassabon|filiaal|datum|tijd|kassa|medewerker|subtotaal|totaal|betaling|betaald|pin|contant|wisselgeld|btw|bonus|korting|spaarsaldo|koopzegels|transactie|kaartnummer|www\.|bedankt|welkom)\b/i;
+const NON_PRODUCT_LINE = /\b(?:albert heijn|aldi|action|etos|kruidvat|receipt|kassabon|filiaal|datum|tijd|kassa|medewerker|subtotaal|totaal|betaling|betaald|pin|contant|wisselgeld|btw|bonus|bonuskaart|bbox|benefit|promotions?|korting|deposit|incl[.]?hef[.]?sup|spaarsaldo|koopzegels|transactie|kaartnummer|www\.|bedankt|welkom)\b/i;
+const END_OF_PURCHASES = /\bsubt[o0]ta{1,2}l\b/i;
 const PRICE_AT_END = /(?:\s|^)[€]?\s*-?\d{1,4}[,.]\d{2}\s*[A-Z]?\s*$/i;
+const OCR_PRICE_AND_MARKER = /\s+[€]?\s*(?:\d{1,4}[,.]\d{2}|\d{3})\s*(?:BB?|%|;)\s*$/i;
 const LEADING_QUANTITY = /^\s*\d+(?:[,.]\d+)?\s*[xX*]?\s+/;
 const PRODUCT_CODE = /\b\d{7,}\b/;
 
 function cleanReceiptLine(value: string): string {
   return value
     .replace(/\s+/g, " ")
+    .replace(OCR_PRICE_AND_MARKER, "")
     .replace(PRICE_AT_END, "")
     .replace(LEADING_QUANTITY, "")
     .replace(/^[*#·\-]+\s*/, "")
@@ -31,6 +34,7 @@ export function extractReceiptProducts(text: string): string[] {
   const products: string[] = [];
 
   for (const rawLine of text.split(/\r?\n/)) {
+    if (END_OF_PURCHASES.test(rawLine)) break;
     const line = cleanReceiptLine(rawLine);
     const letters = line.match(/[A-Za-zÀ-ÿ]/g)?.length ?? 0;
     const normalized = normalizeText(line);

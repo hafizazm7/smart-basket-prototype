@@ -98,12 +98,20 @@ export async function GET() {
   };
 
   const receiptProducts = extractReceiptProducts(`
-    ALBERT HEIJN
-    15-09-2026 18:19
-    AH TERRA TEMPEH 1,59
-    AH VOLLE MELK 1,39
-    SUBTOTAAL 2,98
-    PIN BETALING 2,98
+    BONUSKAART xx3597
+    1 AH CHIPS 1,39
+    1 SPA FRUIT 2,49 BB
+    +DEPOSIT 0,25
+    1 DE ICE CAPP 159 B
+    INCL.HEF.SUP 0,01
+    1 TONY'S CHOCO 2,69 BB
+    1 AARDBEI NED 3,99 ;
+    1 AH TEMPEH 229 %
+    1 AH VOL MELK 1,39
+    1 TOSTIBROOD 1,19
+    9 SUBTOTAL 19,96
+    BBOX PDTONY'S90GR -2,69
+    25% K AH TEMPEH -0,57
   `);
   const receiptSuggestions = suggestReceiptLinks(
     [
@@ -165,15 +173,16 @@ export async function GET() {
       && match.reasons.includes("product_form_conflict")
     )),
     retailerSearchTranslationWorks: Object.values(translations).every(Boolean),
-    receiptProductLinesExtracted: receiptProducts.length === 2
-      && receiptProducts.includes("AH TERRA TEMPEH")
-      && receiptProducts.includes("AH VOLLE MELK"),
+    receiptProductLinesExtracted: receiptProducts.length === 8
+      && receiptProducts.includes("AH TEMPEH")
+      && receiptProducts.includes("AH VOL MELK")
+      && !receiptProducts.some((product) => /deposit|subtotal|bbox|25%|2,69|229/i.test(product)),
     receiptObviousLinksAutomatic: receiptSuggestions.find((suggestion) => (
       suggestion.itemId === "tempeh"
-    ))?.receiptLabel === "AH TERRA TEMPEH"
+    ))?.receiptLabel === "AH TEMPEH"
       && receiptSuggestions.find((suggestion) => (
         suggestion.itemId === "milk"
-      ))?.receiptLabel === "AH VOLLE MELK",
+      ))?.receiptLabel === "AH VOL MELK",
     receiptUncertainLinksNeedQuickCheck: receiptSuggestions.find((suggestion) => (
       suggestion.itemId === "cucumber"
     ))?.receiptLabel === null,

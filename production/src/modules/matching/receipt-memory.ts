@@ -24,13 +24,18 @@ export function readReceiptMemory(): Record<string, ReceiptMemoryEntry> {
   }
 }
 
-export function saveReceiptMappings(mappings: Array<{ query: string; receiptLabel: string }>): number {
+export function saveReceiptMappings(
+  mappings: Array<{ query: string; receiptLabel: string }>,
+  replaceQueries: string[] = [],
+): number {
   if (typeof window === "undefined") return 0;
 
   try {
     const memory = readReceiptMemory();
     const learnedAt = new Date().toISOString();
     let saved = 0;
+
+    for (const query of replaceQueries) delete memory[receiptMemoryKey(query)];
 
     for (const mapping of mappings) {
       const query = mapping.query.trim();
