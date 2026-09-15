@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { OptimizerItem, OptimizerOffer, OptimizerPromotion } from "@/modules/optimizer/types";
+import type { FreshnessStatus } from "@/modules/pricing/types";
+import type { RetailerKey } from "@/modules/retailers/types";
 
-type ReviewItem = {
+export type ReviewItem = {
   id: string;
   text: string;
   quantity: number;
 };
 
 type MatchOption = {
-  retailer: string;
+  retailer: RetailerKey;
   externalId: string | null;
   name: string;
   brand: string | null;
@@ -20,6 +23,10 @@ type MatchOption = {
   unitPrice: number | null;
   unitPriceUnit: string | null;
   promotion: string | null;
+  promotionDetails: OptimizerPromotion | null;
+  sourceUrl: string;
+  observedAt: string;
+  freshness: FreshnessStatus;
   confidence: number;
   accepted: boolean;
   requiresConfirmation: boolean;
@@ -133,6 +140,83 @@ function selectedOption(state: MatchState | undefined): MatchOption | null {
   return allOptions(state.response).find((option) => optionKey(option) === state.selectedKey) ?? null;
 }
 
+function normalizedIdentity(value: string | null): string {
+  return (value ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function isSameProduct(left: MatchOption, right: MatchOption): boolean {
+  return normalizedIdentity(left.name) === normalizedIdentity(right.name)
+    && normalizedIdentity(left.brand) === normalizedIdentity(right.brand)
+    && left.sizeValue === right.sizeValue
+    && normalizedIdentity(left.sizeUnit) === normalizedIdentity(right.sizeUnit);
+}
+
+function basePackage(option: MatchOption): { value: number; unit: string } | null {
+  if (!option.sizeValue || !option.sizeUnit) return null;
+  const unit = option.sizeUnit.toLowerCase();
+  if (unit === "kg") return { value: option.sizeValue * 1000, unit: "g" };
+  if (unit === "l") return { value: option.sizeValue * 1000, unit: "ml" };
+  if (unit === "cl") return { value: option.sizeValue * 10, unit: "ml" };
+  if (unit === "item") return { value: option.sizeValue, unit: "item" };
+  if (unit === "wipe") return { value: option.sizeValue, unit: "item" };
+  return { value: option.sizeValue, unit };
+}
+
+function packagesForEquivalent(
+  requestedQuantity: number,
+  selected: MatchOption,
+  option: MatchOption,
+): number | null {
+  const targetPackage = basePackage(selected);
+  const offeredPackage = basePackage(option);
+  if (!targetPackage || !offeredPackage) return requestedQuantity;
+  if (targetPackage.unit !== offeredPackage.unit) return null;
+
+  return Math.max(1, Math.ceil(
+    (requestedQuantity * targetPackage.value) / offeredPackage.value - Number.EPSILON,
+  ));
+}
+
+function automaticOptions(
+  state: MatchState,
+  selected: MatchOption,
+  requestedQuantity: number,
+): Array<{
+  option: MatchOption;
+  packageQuantity: number;
+}> {
+  const seenRetailers = new Set<RetailerKey>();
+  const result: Array<{ option: MatchOption; packageQuantity: number }> = [];
+
+  for (const option of state.response?.matches ?? []) {
+    if (!option.accepted || option.requiresConfirmation || seenRetailers.has(option.retailer)) continue;
+    const packageQuantity = packagesForEquivalent(requestedQuantity, selected, option);
+    if (packageQuantity == null) continue;
+    seenRetailers.add(option.retailer);
+    result.push({ option, packageQuantity });
+  }
+  return result;
+}
+
+function optimizerOffer(option: MatchOption, packageQuantity: number): OptimizerOffer {
+  return {
+    retailer: option.retailer,
+    externalId: option.externalId,
+    productName: option.name,
+    price: option.price,
+    packageQuantity,
+    sourceUrl: option.sourceUrl,
+    observedAt: option.observedAt,
+    freshness: option.freshness,
+    promotion: option.promotionDetails,
+  };
+}
+
 function needsAttention(state: MatchState | undefined): boolean {
   if (!state || state.loading) return false;
   if (state.error) return !state.keptAsTyped;
@@ -212,7 +296,9 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
           keptAsTyped,
         }] as const;
       } catch (error) {
-        const keptAsTyped = readOverrides()[queryKey(item.text)] === KEEP_TYPED_SENTINEL;
+        const keptAsTyped = savedOverride(
+          readOverrides()[queryKey(item.text)],
+        ).selectedKey === KEEP_TYPED_SENTINEL;
         entries[index] = [item.id, {
           loading: false,
           error: error instanceof Error ? error.message : "Product matching failed.",
@@ -234,7 +320,13 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
   return entries.filter((entry): entry is readonly [string, MatchState] => Boolean(entry));
 }
 
-export default function MatchReview({ items }: { items: ReviewItem[] }) {
+export default function MatchReview({
+  items,
+  onReadyChange,
+}: {
+  items: ReviewItem[];
+  onReadyChange?: (items: OptimizerItem[] | null) => void;
+}) {
   const [states, setStates] = useState<Record<string, MatchState>>({});
   const [showAll, setShowAll] = useState(false);
 
@@ -275,6 +367,44 @@ export default function MatchReview({ items }: { items: ReviewItem[] }) {
     const attention = values.filter((state) => needsAttention(state)).length;
     return { loading, matched, kept, confirmed, attention };
   }, [states]);
+
+  const optimizerItems = useMemo<OptimizerItem[] | null>(() => {
+    if (Object.keys(states).length !== items.length || summary.loading || summary.attention > 0) {
+      return null;
+    }
+
+    return items.map((item) => {
+      const state = states[item.id];
+      const selected = selectedOption(state);
+      if (!state || state.keptAsTyped || !selected) {
+        return {
+          id: item.id,
+          query: item.text,
+          quantity: item.quantity,
+          keptAsTyped: true,
+          offers: [],
+        };
+      }
+
+      const offers = state.confirmedByUser
+        ? allOptions(state.response)
+            .filter((option) => isSameProduct(option, selected))
+            .map((option) => ({ option, packageQuantity: item.quantity }))
+        : automaticOptions(state, selected, item.quantity);
+
+      return {
+        id: item.id,
+        query: item.text,
+        quantity: item.quantity,
+        keptAsTyped: false,
+        offers: offers.map(({ option, packageQuantity }) => optimizerOffer(option, packageQuantity)),
+      };
+    });
+  }, [items, states, summary.attention, summary.loading]);
+
+  useEffect(() => {
+    onReadyChange?.(optimizerItems);
+  }, [onReadyChange, optimizerItems]);
 
   async function refreshMatch(item: ReviewItem, allowed: boolean) {
     clearOverride(item.text);

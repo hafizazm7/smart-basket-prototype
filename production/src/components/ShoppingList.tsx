@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import CompareResults from "@/components/CompareResults";
 import MatchReview from "@/components/MatchReview";
+import type { OptimizerItem } from "@/modules/optimizer/types";
 
 type ShoppingItem = {
   id: string;
@@ -31,6 +33,8 @@ export default function ShoppingList() {
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState("");
   const [reviewItems, setReviewItems] = useState<ShoppingItem[] | null>(null);
+  const [optimizerItems, setOptimizerItems] = useState<OptimizerItem[] | null>(null);
+  const [screen, setScreen] = useState<"list" | "compare">("list");
 
   useEffect(() => {
     let restored: ShoppingItem[] = [];
@@ -63,6 +67,12 @@ export default function ShoppingList() {
     [items],
   );
 
+  function invalidateComparison() {
+    setReviewItems(null);
+    setOptimizerItems(null);
+    setScreen("list");
+  }
+
   function addBulkItems() {
     const lines = bulkInput
       .split(/\r?\n|,/)
@@ -75,7 +85,7 @@ export default function ShoppingList() {
     }
 
     setItems((current) => [...current, ...lines.map(makeItem)]);
-    setReviewItems(null);
+    invalidateComparison();
     setBulkInput("");
     setNotice(`${lines.length} item${lines.length === 1 ? "" : "s"} added.`);
   }
@@ -84,7 +94,7 @@ export default function ShoppingList() {
     const value = singleInput.trim();
     if (!value) return;
     setItems((current) => [...current, makeItem(value)]);
-    setReviewItems(null);
+    invalidateComparison();
     setSingleInput("");
     setNotice("Item added.");
   }
@@ -97,7 +107,7 @@ export default function ShoppingList() {
           : item,
       ),
     );
-    setReviewItems(null);
+    invalidateComparison();
   }
 
   function startEdit(item: ShoppingItem) {
@@ -111,7 +121,7 @@ export default function ShoppingList() {
     setItems((current) =>
       current.map((item) => (item.id === id ? { ...item, text: value } : item)),
     );
-    setReviewItems(null);
+    invalidateComparison();
     setEditingId(null);
     setEditingText("");
     setNotice("Item updated.");
@@ -119,7 +129,7 @@ export default function ShoppingList() {
 
   function removeItem(id: string) {
     setItems((current) => current.filter((item) => item.id !== id));
-    setReviewItems(null);
+    invalidateComparison();
     if (editingId === id) setEditingId(null);
     setNotice("Item removed.");
   }
@@ -128,7 +138,7 @@ export default function ShoppingList() {
     if (!items.length) return;
     if (!window.confirm("Clear the whole shopping list?")) return;
     setItems([]);
-    setReviewItems(null);
+    invalidateComparison();
     setNotice("Shopping list cleared.");
   }
 
@@ -137,6 +147,8 @@ export default function ShoppingList() {
       setNotice("Add at least one item first.");
       return;
     }
+    setScreen("list");
+    setOptimizerItems(null);
     setReviewItems(items.map((item) => ({ ...item })));
     setNotice("Matching products automatically. Smart Basket will only ask if something needs your input.");
   }
@@ -161,6 +173,9 @@ export default function ShoppingList() {
         </div>
       </header>
 
+      {screen === "compare" && optimizerItems ? (
+        <CompareResults items={optimizerItems} onBack={() => setScreen("list")} />
+      ) : (
       <section className="screen active" aria-label="Shopping list">
         <h1>Your shopping list</h1>
         <p className="sub">Paste or type your shopping list, one item per line, or update a shelf price with a photo.</p>
@@ -263,7 +278,7 @@ export default function ShoppingList() {
           )}
         </section>
 
-        {reviewItems && <MatchReview items={reviewItems} />}
+        {reviewItems && <MatchReview items={reviewItems} onReadyChange={setOptimizerItems} />}
 
         <section className="soft-card photo-card">
           <div className="row space">
@@ -276,13 +291,21 @@ export default function ShoppingList() {
         </section>
 
         <div className="action-spacer" />
-        <button className="primary" type="button" onClick={handleFindCheapest}>Find Cheapest</button>
+        <button
+          className="primary"
+          type="button"
+          disabled={Boolean(reviewItems) && !optimizerItems}
+          onClick={reviewItems && optimizerItems ? () => setScreen("compare") : handleFindCheapest}
+        >
+          {reviewItems ? (optimizerItems ? "Compare basket" : "Complete Quick check to compare") : "Find Cheapest"}
+        </button>
         {notice && <p className="notice">{notice}</p>}
       </section>
+      )}
 
       <nav className="bottom-nav" aria-label="Smart Basket navigation">
-        <button className="active" type="button"><span className="nav-ico">☷</span>List</button>
-        <button type="button" disabled><span className="nav-ico">⌁</span>Compare</button>
+        <button className={screen === "list" ? "active" : ""} type="button" onClick={() => setScreen("list")}><span className="nav-ico">☷</span>List</button>
+        <button className={screen === "compare" ? "active" : ""} type="button" disabled={!optimizerItems} onClick={() => setScreen("compare")}><span className="nav-ico">⌁</span>Compare</button>
         <button type="button" disabled><span className="nav-ico">✓</span>Shop</button>
         <button type="button" disabled><span className="nav-ico">⌂</span>Stores</button>
       </nav>

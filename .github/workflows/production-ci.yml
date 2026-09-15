@@ -38,3 +38,16 @@ jobs:
           done
           cat /tmp/matching-status.json
           node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('/tmp/matching-status.json','utf8')); if(!x.ok){process.exit(1)}"
+      - name: Run basket optimizer self-check
+        run: |
+          npm start -- -p 3002 > /tmp/smart-basket-optimizer.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3002/api/basket-optimizer/status -o /tmp/optimizer-status.json; then
+              break
+            fi
+            sleep 1
+          done
+          cat /tmp/optimizer-status.json
+          node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('/tmp/optimizer-status.json','utf8')); if(!x.ok){process.exit(1)}"

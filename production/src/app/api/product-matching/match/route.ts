@@ -1,6 +1,7 @@
 import { rankMatches } from "@/modules/matching/match";
 import { extractRequestedPackage, toRetailerSearchQuery } from "@/modules/matching/text";
 import type { RankedMatch, RetrievedCandidate } from "@/modules/matching/types";
+import { classifyFreshness } from "@/modules/pricing/freshness";
 import { getRetailerAdapter } from "@/modules/retailers/official-search-adapter";
 import { RETAILER_KEYS } from "@/modules/retailers/sources";
 import type { RetailerKey } from "@/modules/retailers/types";
@@ -49,6 +50,9 @@ function serializeMatch(match: RankedMatch, accepted: boolean) {
     unitPrice: match.record.unitPrice,
     unitPriceUnit: match.record.unitPriceUnit,
     promotion: match.record.promotion?.label ?? null,
+    promotionDetails: match.record.promotion ?? null,
+    observedAt: match.record.observedAt,
+    freshness: classifyFreshness(match.record.observedAt, "web"),
     confidence: match.confidence,
     accepted,
     requiresConfirmation: accepted ? match.requiresConfirmation : true,
