@@ -35,6 +35,34 @@ const PRODUCT_FORM_TOKENS = new Set([
   "zuigtabletten",
 ]);
 
+const PRODUCE_QUERY_TOKENS = new Set(["citroen", "wortel"]);
+const PRODUCE_NAME_MODIFIERS = new Set([
+  "ah",
+  "aldi",
+  "albert",
+  "biologisch",
+  "bio",
+  "etos",
+  "fijn",
+  "fijne",
+  "geschrapt",
+  "geschrapte",
+  "groot",
+  "grote",
+  "heijn",
+  "julienne",
+  "klein",
+  "kleine",
+  "kruidvat",
+  "los",
+  "losse",
+  "net",
+  "snoepgroente",
+  "vers",
+  "verse",
+  "zak",
+]);
+
 function candidateText(record: NormalizedRetailerPrice): string {
   return [record.brand, record.rawName, record.description].filter(Boolean).join(" ");
 }
@@ -114,7 +142,17 @@ function hasProductFormConflict(
 
   const queryToken = queryTokens[0];
   const brandTokens = new Set(requestedBrand ? uniqueTokens(requestedBrand) : []);
-  return uniqueTokens(record.rawName).some((token) => (
+  const candidateNameTokens = uniqueTokens(record.rawName);
+
+  if (PRODUCE_QUERY_TOKENS.has(queryToken)) {
+    return candidateNameTokens.some((token) => (
+      token !== queryToken
+      && !brandTokens.has(token)
+      && !PRODUCE_NAME_MODIFIERS.has(token)
+    ));
+  }
+
+  return candidateNameTokens.some((token) => (
     token !== queryToken
     && !brandTokens.has(token)
     && PRODUCT_FORM_TOKENS.has(token)

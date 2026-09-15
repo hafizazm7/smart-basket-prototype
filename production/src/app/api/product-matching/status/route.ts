@@ -52,6 +52,7 @@ export async function GET() {
   const carrotPuree = candidate("kruidvat", "carrot-puree", "Kruidvat Bio Wortel Groentehapje", null, 125, "g");
   const lemons = candidate("aldi", "lemons", "Citroenen", null, 2, "item");
   const lemonOil = candidate("action", "lemon-oil", "Vegan Omega 3 Olie Citroen", null, 250, "ml");
+  const lemonCleaner = candidate("action", "lemon-cleaner", "Duck Fresh Discs Starterkit Citroen", "Duck", null, null);
 
   const locked = rankMatches(
     { query: "Dreft afwasmiddel 350ml", alternativesAllowed: false },
@@ -83,7 +84,7 @@ export async function GET() {
   );
   const produceLemons = rankMatches(
     { query: "Lemons", alternativesAllowed: false },
-    [lemonOil, lemons],
+    [lemonOil, lemonCleaner, lemons],
   );
 
   const translations = {
@@ -138,6 +139,10 @@ export async function GET() {
       match.record.externalId === "lemons" && match.accepted
     )) && produceLemons.some((match) => (
       match.record.externalId === "lemon-oil"
+      && !match.accepted
+      && match.reasons.includes("product_form_conflict")
+    )) && produceLemons.some((match) => (
+      match.record.externalId === "lemon-cleaner"
       && !match.accepted
       && match.reasons.includes("product_form_conflict")
     )),
