@@ -48,6 +48,10 @@ export async function GET() {
   const cocaColaZero = candidate("action", "coke-zero", "Coca Cola Zero", null, 375, "ml");
   const cocaColaBrand = candidate("action", "coke-brand", "Coca Cola", null, 375, "ml", 1);
   const fantaZero = candidate("action", "fanta-zero", "Fanta Zero Sugar", null, 375, "ml", 2);
+  const carrots = candidate("ah", "carrots", "AH Wortelen", null, 500, "g");
+  const carrotPuree = candidate("kruidvat", "carrot-puree", "Kruidvat Bio Wortel Groentehapje", null, 125, "g");
+  const lemons = candidate("aldi", "lemons", "Citroenen", null, 2, "item");
+  const lemonOil = candidate("action", "lemon-oil", "Vegan Omega 3 Olie Citroen", null, 250, "ml");
 
   const locked = rankMatches(
     { query: "Dreft afwasmiddel 350ml", alternativesAllowed: false },
@@ -72,6 +76,14 @@ export async function GET() {
   const metadataFreeAlternatives = rankMatches(
     { query: "Coca-Cola Zero 1.5L", alternativesAllowed: true },
     [cocaColaZero, cocaColaBrand, fantaZero],
+  );
+  const produceCarrots = rankMatches(
+    { query: "Carrots", alternativesAllowed: false },
+    [carrotPuree, carrots],
+  );
+  const produceLemons = rankMatches(
+    { query: "Lemons", alternativesAllowed: false },
+    [lemonOil, lemons],
   );
 
   const translations = {
@@ -115,6 +127,19 @@ export async function GET() {
       match.record.externalId === "fanta-zero"
       && match.accepted
       && match.reasons.includes("brand_alternative")
+    )),
+    genericProduceRejectsOtherProductForms: produceCarrots.some((match) => (
+      match.record.externalId === "carrots" && match.accepted
+    )) && produceCarrots.some((match) => (
+      match.record.externalId === "carrot-puree"
+      && !match.accepted
+      && match.reasons.includes("product_form_conflict")
+    )) && produceLemons.some((match) => (
+      match.record.externalId === "lemons" && match.accepted
+    )) && produceLemons.some((match) => (
+      match.record.externalId === "lemon-oil"
+      && !match.accepted
+      && match.reasons.includes("product_form_conflict")
     )),
     retailerSearchTranslationWorks: Object.values(translations).every(Boolean),
   };

@@ -2,6 +2,39 @@ import type { NormalizedRetailerPrice } from "@/modules/retailers/normalize-reco
 import { extractRequestedPackage, phrasePresent, toBasePackage, uniqueTokens } from "./text";
 import type { MatchReason, MatchRequest, RankedMatch, RequestedPackage, RetrievedCandidate } from "./types";
 
+const PRODUCT_FORM_TOKENS = new Set([
+  "capsule",
+  "capsules",
+  "cockpitspray",
+  "groentehapje",
+  "knijpfruit",
+  "knijpzakje",
+  "limonadepoeder",
+  "maaltijd",
+  "maaltijdpotje",
+  "maispuffs",
+  "olie",
+  "poeder",
+  "radler",
+  "reiniger",
+  "reinigingsdoekje",
+  "reinigingsdoekjes",
+  "siroop",
+  "spray",
+  "supplement",
+  "tablet",
+  "tabletten",
+  "vaatwascapsule",
+  "vaatwascapsules",
+  "vaatwastablet",
+  "vaatwastabletten",
+  "vloerreinigingsmiddel",
+  "vuilniszak",
+  "vuilniszakken",
+  "zuigtablet",
+  "zuigtabletten",
+]);
+
 function candidateText(record: NormalizedRetailerPrice): string {
   return [record.brand, record.rawName, record.description].filter(Boolean).join(" ");
 }
@@ -69,6 +102,25 @@ function brandMatches(record: NormalizedRetailerPrice, requestedBrand: string): 
   return phrasePresent(candidateText(record), requestedBrand);
 }
 
+function hasProductFormConflict(
+  queryTokens: string[],
+  record: NormalizedRetailerPrice,
+  requestedBrand: string | null,
+): boolean {
+  // A one-concept request such as "carrots" or "lemons" must not silently
+  // become baby food, cleaning products, supplements, or flavoured drinks.
+  // Multi-concept requests already carry enough context for normal overlap scoring.
+  if (queryTokens.length !== 1) return false;
+
+  const queryToken = queryTokens[0];
+  const brandTokens = new Set(requestedBrand ? uniqueTokens(requestedBrand) : []);
+  return uniqueTokens(record.rawName).some((token) => (
+    token !== queryToken
+    && !brandTokens.has(token)
+    && PRODUCT_FORM_TOKENS.has(token)
+  ));
+}
+
 function scoreCandidate(
   request: MatchRequest,
   candidate: RetrievedCandidate,
@@ -124,10 +176,13 @@ function scoreCandidate(
   // An exact brand alone is not enough when the user also named a product.
   // For example, "Dreft shampoo" must not match "Dreft afwasmiddel".
   const semanticRelevant = queryTokens.length === 0 || textHits > 0;
+  const productFormConflict = hasProductFormConflict(queryTokens, record, requestedBrand);
+  if (productFormConflict) reasons.push("product_form_conflict");
   const accepted = (
     semanticRelevant
     && !lockedBrandMismatch
     && !packageScore.incompatible
+    && !productFormConflict
     && confidence >= 0.44
   );
   const requestedSizeNeedsCheck = requestedPackage !== null && packageScore.reason !== "size_exact";

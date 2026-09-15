@@ -25,6 +25,7 @@ export type MatchReason =
   | "brand_mismatch"
   | "text_strong"
   | "text_partial"
+  | "product_form_conflict"
   | "retrieval_relevant"
   | "size_exact"
   | "size_similar"
