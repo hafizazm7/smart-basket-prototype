@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useMemo, useState } from "react";
+import { type ChangeEvent, useMemo, useState } from "react";
 import {
   extractReceiptProducts,
   suggestReceiptLinks,
@@ -90,6 +90,12 @@ export default function ReceiptLearning({
     }
   }
 
+  function handleReceiptSelection(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) void readReceipt(file);
+    event.target.value = "";
+  }
+
   function saveLearning() {
     const mappings = items.flatMap((item) => {
       const receiptLabel = selections[item.id]?.trim();
@@ -128,26 +134,35 @@ export default function ReceiptLearning({
 
       {expanded && (
         <div className="stack receipt-workspace">
-          <label className={`secondary full receipt-upload${!readerReady || reading || !items.length ? " disabled" : ""}`}>
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              disabled={!readerReady || reading || !items.length}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void readReceipt(file);
-                event.target.value = "";
-              }}
-            />
-            {reading
-              ? `Reading receipt${progress ? ` · ${progress}%` : "…"}`
-              : !items.length
-                ? "Keep your shopping list to teach matches"
-                : readerReady
-                  ? "Take or choose receipt photo"
-                  : "Preparing receipt reader…"}
-          </label>
+          <div className="receipt-upload-actions">
+            <label className={`secondary receipt-upload${!readerReady || reading || !items.length ? " disabled" : ""}`}>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                disabled={!readerReady || reading || !items.length}
+                onChange={handleReceiptSelection}
+              />
+              📷 Take photo
+            </label>
+            <label className={`secondary receipt-upload${!readerReady || reading || !items.length ? " disabled" : ""}`}>
+              <input
+                type="file"
+                accept="image/*"
+                disabled={!readerReady || reading || !items.length}
+                onChange={handleReceiptSelection}
+              />
+              🖼️ Choose gallery
+            </label>
+          </div>
+
+          {!items.length ? (
+            <div className="helper">Keep your shopping list to teach matches.</div>
+          ) : !readerReady ? (
+            <div className="helper">Preparing receipt reader…</div>
+          ) : reading ? (
+            <div className="helper">Reading receipt{progress ? ` · ${progress}%` : "…"}</div>
+          ) : null}
 
           <div className="helper">Your photo stays on this device and is not uploaded.</div>
 

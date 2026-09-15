@@ -273,6 +273,7 @@ h1 {
 .photo-action { flex: 0 0 auto; width: 54px; padding: 0; }
 .receipt-card { margin-top: 14px; }
 .receipt-workspace { margin-top: 14px; }
+.receipt-upload-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .receipt-upload {
   display: grid;
   place-items: center;
