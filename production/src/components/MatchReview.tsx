@@ -331,9 +331,11 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
 export default function MatchReview({
   items,
   onReadyChange,
+  onAttentionChange,
 }: {
   items: ReviewItem[];
   onReadyChange?: (items: OptimizerItem[] | null) => void;
+  onAttentionChange?: (count: number | null) => void;
 }) {
   const [states, setStates] = useState<Record<string, MatchState>>({});
   const [showAll, setShowAll] = useState(false);
@@ -413,6 +415,10 @@ export default function MatchReview({
   useEffect(() => {
     onReadyChange?.(optimizerItems);
   }, [onReadyChange, optimizerItems]);
+
+  useEffect(() => {
+    onAttentionChange?.(summary.loading ? null : summary.attention);
+  }, [onAttentionChange, summary.attention, summary.loading]);
 
   async function refreshMatch(item: ReviewItem, allowed: boolean) {
     clearOverride(item.text);
@@ -512,6 +518,30 @@ export default function MatchReview({
     saveOverride(item.text, KEEP_TYPED_SENTINEL, false);
   }
 
+  function keepAllUncertainAsTyped() {
+    const uncertainItems = items.filter((item) => needsAttention(states[item.id]));
+    if (!uncertainItems.length) return;
+
+    setStates((current) => {
+      const next = { ...current };
+      for (const item of uncertainItems) {
+        const state = current[item.id];
+        if (!state) continue;
+        next[item.id] = {
+          ...state,
+          selectedKey: null,
+          confirmedByUser: true,
+          keptAsTyped: true,
+        };
+      }
+      return next;
+    });
+
+    for (const item of uncertainItems) {
+      saveOverride(item.text, KEEP_TYPED_SENTINEL, false);
+    }
+  }
+
   function toggleOther(itemId: string) {
     setStates((current) => ({
       ...current,
@@ -548,6 +578,12 @@ export default function MatchReview({
               : `${summary.matched}/${items.length} items matched automatically. Nothing else to do here.`}
         </div>
       </div>
+
+      {summary.attention > 0 && (
+        <button className="secondary full" type="button" onClick={keepAllUncertainAsTyped}>
+          Keep all {summary.attention} uncertain item{summary.attention === 1 ? "" : "s"} as typed
+        </button>
+      )}
 
       {visibleItems.map((item) => {
         const state = states[item.id];

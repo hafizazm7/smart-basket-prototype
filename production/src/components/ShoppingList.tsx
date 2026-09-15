@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import CompareResults from "@/components/CompareResults";
 import MatchReview from "@/components/MatchReview";
 import ReceiptLearning from "@/components/ReceiptLearning";
@@ -35,7 +35,9 @@ export default function ShoppingList() {
   const [notice, setNotice] = useState("");
   const [reviewItems, setReviewItems] = useState<ShoppingItem[] | null>(null);
   const [optimizerItems, setOptimizerItems] = useState<OptimizerItem[] | null>(null);
+  const [matchAttention, setMatchAttention] = useState<number | null>(null);
   const [screen, setScreen] = useState<"list" | "compare">("list");
+  const matchReviewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let restored: ShoppingItem[] = [];
@@ -71,6 +73,7 @@ export default function ShoppingList() {
   function invalidateComparison() {
     setReviewItems(null);
     setOptimizerItems(null);
+    setMatchAttention(null);
     setScreen("list");
   }
 
@@ -150,9 +153,40 @@ export default function ShoppingList() {
     }
     setScreen("list");
     setOptimizerItems(null);
+    setMatchAttention(null);
     setReviewItems(items.map((item) => ({ ...item })));
     setNotice("Matching products automatically. Smart Basket will only ask if something needs your input.");
   }
+
+  function handlePrimaryAction() {
+    if (!reviewItems) {
+      handleFindCheapest();
+      return;
+    }
+
+    if (optimizerItems) {
+      setScreen("compare");
+      return;
+    }
+
+    if (matchAttention && matchAttention > 0) {
+      matchReviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  const primaryActionDisabled = Boolean(reviewItems)
+    && !optimizerItems
+    && !(matchAttention && matchAttention > 0);
+
+  const primaryActionLabel = !reviewItems
+    ? "Find Cheapest"
+    : optimizerItems
+      ? "Compare basket"
+      : matchAttention === null
+        ? "Matching products…"
+        : matchAttention > 0
+          ? `Review ${matchAttention} remaining item${matchAttention === 1 ? "" : "s"}`
+          : "Preparing comparison…";
 
   return (
     <main className="app">
@@ -275,13 +309,26 @@ export default function ShoppingList() {
           )}
         </section>
 
-        {reviewItems && <MatchReview items={reviewItems} onReadyChange={setOptimizerItems} />}
+        {reviewItems && (
+          <div className="match-review-anchor" ref={matchReviewRef}>
+            <MatchReview
+              items={reviewItems}
+              onReadyChange={setOptimizerItems}
+              onAttentionChange={setMatchAttention}
+            />
+          </div>
+        )}
 
         <ReceiptLearning
           items={items}
           onLearned={(count) => {
-            invalidateComparison();
-            setNotice(`${count} receipt match${count === 1 ? "" : "es"} saved. Future lists will use them automatically.`);
+            setOptimizerItems(null);
+            setMatchAttention(null);
+            setReviewItems(items.map((item) => ({ ...item })));
+            setNotice(`${count} receipt match${count === 1 ? "" : "es"} saved. Rechecking your products automatically…`);
+            window.requestAnimationFrame(() => {
+              matchReviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
           }}
         />
 
@@ -289,10 +336,10 @@ export default function ShoppingList() {
         <button
           className="primary"
           type="button"
-          disabled={Boolean(reviewItems) && !optimizerItems}
-          onClick={reviewItems && optimizerItems ? () => setScreen("compare") : handleFindCheapest}
+          disabled={primaryActionDisabled}
+          onClick={handlePrimaryAction}
         >
-          {reviewItems ? (optimizerItems ? "Compare basket" : "Complete Quick check to compare") : "Find Cheapest"}
+          {primaryActionLabel}
         </button>
         {notice && <p className="notice">{notice}</p>}
       </section>
