@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { OptimizerItem, OptimizerOffer, OptimizerPromotion } from "@/modules/optimizer/types";
 import type { FreshnessStatus } from "@/modules/pricing/types";
 import type { RetailerKey } from "@/modules/retailers/types";
+import { readReceiptMemory, receiptMemoryKey } from "@/modules/matching/receipt-memory";
 
 export type ReviewItem = {
   id: string;
@@ -240,6 +241,7 @@ async function loadMatch(item: ReviewItem, alternativesAllowed: boolean): Promis
 
 async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [string, MatchState]>> {
   const entries: Array<readonly [string, MatchState] | undefined> = new Array(items.length);
+  const receiptMemory = readReceiptMemory();
   let nextIndex = 0;
 
   async function worker() {
@@ -251,9 +253,15 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
       const item = items[index];
       try {
         const stored = savedOverride(readOverrides()[queryKey(item.text)]);
+        const learnedReceiptLabel = stored.selectedKey
+          ? null
+          : receiptMemory[receiptMemoryKey(item.text)]?.receiptLabel ?? null;
+        const lookupItem = learnedReceiptLabel
+          ? { ...item, text: learnedReceiptLabel }
+          : item;
         const keptAsTyped = stored.selectedKey === KEEP_TYPED_SENTINEL;
         let alternativesAllowed = keptAsTyped ? false : stored.alternativesAllowed;
-        let response = await loadMatch(item, alternativesAllowed);
+        let response = await loadMatch(lookupItem, alternativesAllowed);
         let choices = allOptions(response);
         let overrideChoice = keptAsTyped
           ? null
@@ -262,7 +270,7 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
         // Migrate old string-only overrides. A missing locked choice may be an
         // alternative that the user explicitly selected before permission was stored.
         if (stored.legacy && stored.selectedKey && !keptAsTyped && !overrideChoice) {
-          const alternativeResponse = await loadMatch(item, true);
+          const alternativeResponse = await loadMatch(lookupItem, true);
           const alternativeChoices = allOptions(alternativeResponse);
           const alternativeChoice = alternativeChoices.find((option) => (
             optionKey(option) === stored.selectedKey

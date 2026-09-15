@@ -1,4 +1,5 @@
 import { rankMatches } from "@/modules/matching/match";
+import { extractReceiptProducts, suggestReceiptLinks } from "@/modules/matching/receipt-learning";
 import { toRetailerSearchQuery } from "@/modules/matching/text";
 import type { RetrievedCandidate } from "@/modules/matching/types";
 import type { RetailerKey } from "@/modules/retailers/types";
@@ -96,6 +97,23 @@ export async function GET() {
     brandedSizePreserved: toRetailerSearchQuery("Dreft dishwashing liquid 350ml") === "Dreft afwasmiddel 350ml",
   };
 
+  const receiptProducts = extractReceiptProducts(`
+    ALBERT HEIJN
+    15-09-2026 18:19
+    AH TERRA TEMPEH 1,59
+    AH VOLLE MELK 1,39
+    SUBTOTAAL 2,98
+    PIN BETALING 2,98
+  `);
+  const receiptSuggestions = suggestReceiptLinks(
+    [
+      { id: "tempeh", text: "Tempeh" },
+      { id: "milk", text: "Susu volle melk" },
+      { id: "cucumber", text: "Timun" },
+    ],
+    receiptProducts,
+  );
+
   const checks = {
     requestedBrandInferred: locked[0]?.requestedBrand === "Dreft",
     requestedBrandLocked: locked.some((match) => match.record.externalId === "dreft-350" && match.accepted)
@@ -147,6 +165,18 @@ export async function GET() {
       && match.reasons.includes("product_form_conflict")
     )),
     retailerSearchTranslationWorks: Object.values(translations).every(Boolean),
+    receiptProductLinesExtracted: receiptProducts.length === 2
+      && receiptProducts.includes("AH TERRA TEMPEH")
+      && receiptProducts.includes("AH VOLLE MELK"),
+    receiptObviousLinksAutomatic: receiptSuggestions.find((suggestion) => (
+      suggestion.itemId === "tempeh"
+    ))?.receiptLabel === "AH TERRA TEMPEH"
+      && receiptSuggestions.find((suggestion) => (
+        suggestion.itemId === "milk"
+      ))?.receiptLabel === "AH VOLLE MELK",
+    receiptUncertainLinksNeedQuickCheck: receiptSuggestions.find((suggestion) => (
+      suggestion.itemId === "cucumber"
+    ))?.receiptLabel === null,
   };
 
   return Response.json({
@@ -154,6 +184,10 @@ export async function GET() {
     checkedAt: new Date().toISOString(),
     checks,
     translations,
+    receiptLearning: {
+      products: receiptProducts,
+      suggestions: receiptSuggestions,
+    },
     samples: {
       locked: locked.map((match) => ({
         id: match.record.externalId,

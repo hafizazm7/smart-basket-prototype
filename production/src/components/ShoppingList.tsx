@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import CompareResults from "@/components/CompareResults";
 import MatchReview from "@/components/MatchReview";
+import ReceiptLearning from "@/components/ReceiptLearning";
 import type { OptimizerItem } from "@/modules/optimizer/types";
 
 type ShoppingItem = {
@@ -153,10 +154,6 @@ export default function ShoppingList() {
     setNotice("Matching products automatically. Smart Basket will only ask if something needs your input.");
   }
 
-  function handlePhotoUpdate() {
-    setNotice("Shelf-photo price updates will be connected later in the MVP build.");
-  }
-
   return (
     <main className="app">
       <header className="topbar">
@@ -280,15 +277,13 @@ export default function ShoppingList() {
 
         {reviewItems && <MatchReview items={reviewItems} onReadyChange={setOptimizerItems} />}
 
-        <section className="soft-card photo-card">
-          <div className="row space">
-            <div>
-              <div className="photo-title">Price different in-store?</div>
-              <div className="helper">Take a shelf photo and confirm the price.</div>
-            </div>
-            <button className="secondary photo-action" type="button" onClick={handlePhotoUpdate} aria-label="Update shelf price">📷</button>
-          </div>
-        </section>
+        <ReceiptLearning
+          items={items}
+          onLearned={(count) => {
+            invalidateComparison();
+            setNotice(`${count} receipt match${count === 1 ? "" : "es"} saved. Future lists will use them automatically.`);
+          }}
+        />
 
         <div className="action-spacer" />
         <button

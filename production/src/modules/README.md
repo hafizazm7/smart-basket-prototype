@@ -4,7 +4,7 @@ The production app keeps the major Smart Basket responsibilities separate so the
 
 - `pricing/` — Step 7 price engine: unit-price normalization, promotion maths, freshness labels, and freshest-reliable price selection.
 - `retailers/` — Step 7 retailer adapter contract, official source registry, and normalized retailer price records. Individual live collectors are wired retailer-by-retailer during Step 7.
-- `matching/` — canonical product and equivalent-product matching. Added during product-matching build (Step 8).
+- `matching/` — canonical product matching plus local receipt-learning aliases. Receipt photos are read on-device and confirmed mappings are reused during Step 8 matching.
 - `optimizer/` — Step 9 deterministic basket recommendation logic: quantity-aware totals, public promotions, store limits, missing-price handling, and single-store comparison.
 - `photo/` — replaceable shelf-photo extraction provider. The UI must not depend directly on a particular OCR/vision vendor.
 - `shopping/` — Shopping Mode orchestration. Added during Shopping Mode build.

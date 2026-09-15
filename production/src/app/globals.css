@@ -271,6 +271,33 @@ h1 {
 .photo-title { font-weight: 800; }
 .helper { font-size: 12px; color: var(--muted); margin-top: 3px; }
 .photo-action { flex: 0 0 auto; width: 54px; padding: 0; }
+.receipt-card { margin-top: 14px; }
+.receipt-workspace { margin-top: 14px; }
+.receipt-upload {
+  display: grid;
+  place-items: center;
+  min-height: 50px;
+  text-align: center;
+  cursor: pointer;
+}
+.receipt-upload input { position: absolute; opacity: 0; pointer-events: none; }
+.receipt-upload.disabled { opacity: .55; cursor: default; }
+.receipt-links { display: grid; gap: 12px; }
+.receipt-link {
+  display: grid;
+  gap: 7px;
+  padding-top: 12px;
+  border-top: 1px solid #d9eee4;
+}
+.receipt-link > span { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.receipt-message {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  color: #526058;
+  font-size: 12px;
+  line-height: 1.45;
+}
 .action-spacer { height: 16px; }
 .notice {
   margin: 10px 2px 0;
