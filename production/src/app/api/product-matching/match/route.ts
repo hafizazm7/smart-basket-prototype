@@ -1,4 +1,4 @@
-import { rankMatches } from "@/modules/matching/match";
+import { rankMatches, retainMatchesPerRetailer } from "@/modules/matching/match";
 import { extractRequestedPackage, toRetailerSearchQuery } from "@/modules/matching/text";
 import type { RankedMatch, RetrievedCandidate } from "@/modules/matching/types";
 import { classifyFreshness } from "@/modules/pricing/freshness";
@@ -9,6 +9,8 @@ import type { RetailerKey } from "@/modules/retailers/types";
 export const dynamic = "force-dynamic";
 
 const RETAILER_MATCH_TIMEOUT_MS = 8_000;
+const ACCEPTED_MATCHES_PER_RETAILER = 5;
+const OTHER_MATCHES_PER_RETAILER = 2;
 
 function selectedRetailers(requested: string | null): RetailerKey[] {
   if (!requested || requested === "all") return RETAILER_KEYS;
@@ -64,6 +66,7 @@ function serializeMatch(match: RankedMatch, accepted: boolean) {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const query = (url.searchParams.get("q") ?? "").trim();
+  const searchOverride = (url.searchParams.get("search") ?? "").trim();
   const brand = (url.searchParams.get("brand") ?? "").trim() || null;
   const alternativesAllowed = booleanParam(url.searchParams.get("alternatives"));
   const retailers = selectedRetailers(url.searchParams.get("retailers"));
@@ -74,11 +77,14 @@ export async function GET(request: Request) {
   if (query.length > 120) {
     return Response.json({ ok: false, error: "Search query is too long." }, { status: 400 });
   }
+  if (searchOverride.length > 120) {
+    return Response.json({ ok: false, error: "Search override is too long." }, { status: 400 });
+  }
   if (!retailers.length) {
     return Response.json({ ok: false, error: "No supported retailers selected." }, { status: 400 });
   }
 
-  const searchQuery = toRetailerSearchQuery(query);
+  const searchQuery = toRetailerSearchQuery(searchOverride || query);
   const settled = await Promise.allSettled(
     retailers.map((retailer) => withTimeout(
       getRetailerAdapter(retailer).searchNormalized(searchQuery),
@@ -130,7 +136,14 @@ export async function GET(request: Request) {
     !match.accepted
     && !match.reasons.includes("brand_mismatch")
     && !match.reasons.includes("unit_incompatible")
+    && !match.reasons.includes("variant_conflict")
+    && !match.reasons.includes("retailer_identity_conflict")
   ));
+  const responseMatches = retainMatchesPerRetailer(accepted, ACCEPTED_MATCHES_PER_RETAILER);
+  const responseOtherCandidates = retainMatchesPerRetailer(
+    manualCandidates,
+    OTHER_MATCHES_PER_RETAILER,
+  );
 
   return Response.json({
     ok: accepted.length > 0,
@@ -143,8 +156,8 @@ export async function GET(request: Request) {
     sources,
     totalCandidates: candidates.length,
     acceptedMatches: accepted.length,
-    matches: accepted.slice(0, 25).map((match) => serializeMatch(match, true)),
-    otherCandidates: manualCandidates.slice(0, 10).map((match) => serializeMatch(match, false)),
+    matches: responseMatches.map((match) => serializeMatch(match, true)),
+    otherCandidates: responseOtherCandidates.map((match) => serializeMatch(match, false)),
     rejectedPreview: ranked
       .filter((match) => !match.accepted)
       .slice(0, 5)

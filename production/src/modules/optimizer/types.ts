@@ -25,12 +25,20 @@ export type OptimizerOffer = {
   promotion: OptimizerPromotion | null;
 };
 
+export type RetailerCoverageStatus = "matched" | "no_equivalent" | "source_unavailable";
+
+export type RetailerCoverage = {
+  retailer: RetailerKey;
+  status: RetailerCoverageStatus;
+};
+
 export type OptimizerItem = {
   id: string;
   query: string;
   quantity: number;
   keptAsTyped: boolean;
   offers: OptimizerOffer[];
+  retailerCoverage?: RetailerCoverage[];
 };
 
 export type BasketLine = {

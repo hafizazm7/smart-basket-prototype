@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { OptimizerItem, OptimizerOffer, OptimizerPromotion } from "@/modules/optimizer/types";
+import type { OptimizerItem, OptimizerOffer, OptimizerPromotion, RetailerCoverage } from "@/modules/optimizer/types";
 import type { FreshnessStatus } from "@/modules/pricing/types";
+import { RETAILER_KEYS } from "@/modules/retailers/sources";
 import type { RetailerKey } from "@/modules/retailers/types";
 import { readReceiptMemory, receiptMemoryKey } from "@/modules/matching/receipt-memory";
 
@@ -43,6 +44,12 @@ type MatchResponse = {
   acceptedMatches: number;
   matches: MatchOption[];
   otherCandidates?: MatchOption[];
+  sources?: Array<{
+    retailer: RetailerKey;
+    status: number | null;
+    candidates: number;
+    error: string | null;
+  }>;
 };
 
 type MatchState = {
@@ -218,6 +225,23 @@ function optimizerOffer(option: MatchOption, packageQuantity: number): Optimizer
   };
 }
 
+function retailerCoverage(
+  response: MatchResponse | null,
+  offers: OptimizerOffer[],
+): RetailerCoverage[] {
+  const matchedRetailers = new Set(offers.map((offer) => offer.retailer));
+  return RETAILER_KEYS.map((retailer) => {
+    if (matchedRetailers.has(retailer)) return { retailer, status: "matched" };
+    const source = response?.sources?.find((entry) => entry.retailer === retailer);
+    const available = source && !source.error && source.status !== null
+      && source.status >= 200 && source.status < 300;
+    return {
+      retailer,
+      status: available ? "no_equivalent" : "source_unavailable",
+    };
+  });
+}
+
 function needsAttention(state: MatchState | undefined): boolean {
   if (!state || state.loading) return false;
   if (state.error) return !state.keptAsTyped;
@@ -228,9 +252,21 @@ function needsAttention(state: MatchState | undefined): boolean {
   return selected.requiresConfirmation && !state.confirmedByUser;
 }
 
-async function loadMatch(item: ReviewItem, alternativesAllowed: boolean): Promise<MatchResponse> {
+function receiptSearchQuery(value: string): string {
+  return value
+    .replace(/^\s*(?:ah|albert\s+heijn|aldi|action|etos|kruidvat)\b[\s·:\-]*/i, "")
+    .trim();
+}
+
+async function loadMatch(
+  item: ReviewItem,
+  alternativesAllowed: boolean,
+  learnedReceiptLabel?: string | null,
+): Promise<MatchResponse> {
   const params = new URLSearchParams({ q: item.text });
   if (alternativesAllowed) params.set("alternatives", "true");
+  const learnedSearch = learnedReceiptLabel ? receiptSearchQuery(learnedReceiptLabel) : "";
+  if (learnedSearch) params.set("search", learnedSearch);
 
   const response = await fetch(`/api/product-matching/match?${params.toString()}`, {
     cache: "no-store",
@@ -256,12 +292,9 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
         const learnedReceiptLabel = stored.selectedKey
           ? null
           : receiptMemory[receiptMemoryKey(item.text)]?.receiptLabel ?? null;
-        const lookupItem = learnedReceiptLabel
-          ? { ...item, text: learnedReceiptLabel }
-          : item;
         const keptAsTyped = stored.selectedKey === KEEP_TYPED_SENTINEL;
         let alternativesAllowed = keptAsTyped ? false : stored.alternativesAllowed;
-        let response = await loadMatch(lookupItem, alternativesAllowed);
+        let response = await loadMatch(item, alternativesAllowed, learnedReceiptLabel);
         let choices = allOptions(response);
         let overrideChoice = keptAsTyped
           ? null
@@ -270,7 +303,7 @@ async function loadInitialMatches(items: ReviewItem[]): Promise<Array<readonly [
         // Migrate old string-only overrides. A missing locked choice may be an
         // alternative that the user explicitly selected before permission was stored.
         if (stored.legacy && stored.selectedKey && !keptAsTyped && !overrideChoice) {
-          const alternativeResponse = await loadMatch(lookupItem, true);
+          const alternativeResponse = await loadMatch(item, true, learnedReceiptLabel);
           const alternativeChoices = allOptions(alternativeResponse);
           const alternativeChoice = alternativeChoices.find((option) => (
             optionKey(option) === stored.selectedKey
@@ -393,6 +426,7 @@ export default function MatchReview({
           quantity: item.quantity,
           keptAsTyped: true,
           offers: [],
+          retailerCoverage: retailerCoverage(state?.response ?? null, []),
         };
       }
 
@@ -402,12 +436,17 @@ export default function MatchReview({
             .map((option) => ({ option, packageQuantity: item.quantity }))
         : automaticOptions(state, selected, item.quantity);
 
+      const optimizerOffers = offers.map(({ option, packageQuantity }) => (
+        optimizerOffer(option, packageQuantity)
+      ));
+
       return {
         id: item.id,
         query: item.text,
         quantity: item.quantity,
         keptAsTyped: false,
-        offers: offers.map(({ option, packageQuantity }) => optimizerOffer(option, packageQuantity)),
+        offers: optimizerOffers,
+        retailerCoverage: retailerCoverage(state.response, optimizerOffers),
       };
     });
   }, [items, states, summary.attention, summary.loading]);

@@ -26,6 +26,8 @@ export type MatchReason =
   | "text_strong"
   | "text_partial"
   | "product_form_conflict"
+  | "variant_conflict"
+  | "retailer_identity_conflict"
   | "retrieval_relevant"
   | "size_exact"
   | "size_similar"

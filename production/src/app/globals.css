@@ -320,6 +320,16 @@ h1 {
   padding: 4px 0 14px;
 }
 .store-limit { margin-bottom: 14px; }
+.store-coverage { margin-bottom: 14px; }
+.coverage-list { display: grid; gap: 8px; }
+.coverage-row {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.coverage-row span { text-align: right; }
+.coverage-ok { color: var(--green-dark); font-weight: 800; }
+.coverage-missing { color: var(--muted); }
 .segment-control {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { optimizeBasket } from "@/modules/optimizer/optimize";
 import type { BasketPlan, OptimizerItem, StoreBasket } from "@/modules/optimizer/types";
+import { RETAILER_KEYS } from "@/modules/retailers/sources";
 import type { RetailerKey } from "@/modules/retailers/types";
 
 type CompareTab = "recommended" | "by-store" | "single-store";
@@ -30,6 +31,47 @@ function formatChecked(value: string): string {
     minute: "2-digit",
     timeZone: "Europe/Amsterdam",
   }).format(date);
+}
+
+function StoreCoverage({ items }: { items: OptimizerItem[] }) {
+  const coverage = RETAILER_KEYS.map((retailer) => {
+    let matched = 0;
+    let unavailable = 0;
+    for (const item of items) {
+      const status = item.retailerCoverage?.find((entry) => (
+        entry.retailer === retailer
+      ))?.status;
+      if (status === "matched") matched += 1;
+      if (status === "source_unavailable" || !status) unavailable += 1;
+    }
+    return { retailer, matched, unavailable };
+  });
+
+  return (
+    <section className="card stack store-coverage" aria-label="Retailer comparison coverage">
+      <div>
+        <div className="photo-title">Stores checked</div>
+        <div className="helper">Only equivalent products with usable prices are included.</div>
+      </div>
+      <div className="coverage-list">
+        {coverage.map(({ retailer, matched, unavailable }) => {
+          const label = matched === items.length
+            ? `All ${items.length} item${items.length === 1 ? "" : "s"} comparable`
+            : unavailable === items.length
+              ? "Source unavailable"
+              : matched > 0
+                ? `${matched}/${items.length} items comparable`
+                : "No equivalent product found";
+          return (
+            <div className="row space coverage-row" key={retailer}>
+              <strong>{RETAILER_NAMES[retailer]}</strong>
+              <span className={matched > 0 ? "coverage-ok" : "coverage-missing"}>{label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function StoreLines({ store }: { store: StoreBasket }) {
@@ -176,10 +218,18 @@ export default function CompareResults({
         </div>
       </section>
 
+      <StoreCoverage items={items} />
+
       {result.recommended ? (
         result.recommended.complete ? (
           <section className="savings-card" aria-label="Basket savings">
-            {result.savings != null && result.savings > 0 ? (
+            {result.availableRetailers.length < 2 ? (
+              <>
+                <div className="savings-label">Only one comparable store</div>
+                <div className="savings-value">{formatMoney(result.recommended.total)}</div>
+                <div className="savings-copy">No cross-store saving is claimed.</div>
+              </>
+            ) : result.savings != null && result.savings > 0 ? (
               <>
                 <div className="savings-label">You can save</div>
                 <div className="savings-value">
@@ -189,7 +239,7 @@ export default function CompareResults({
               </>
             ) : (
               <>
-                <div className="savings-label">Best current total</div>
+                <div className="savings-label">Best compared total</div>
                 <div className="savings-value">{formatMoney(result.recommended.total)}</div>
                 <div className="savings-copy">within your selected store limit</div>
               </>

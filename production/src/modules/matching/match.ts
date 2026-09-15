@@ -63,6 +63,18 @@ const PRODUCE_NAME_MODIFIERS = new Set([
   "zak",
 ]);
 
+const EXCLUSIVE_VARIANT_GROUPS = [
+  new Set(["volle", "halfvolle", "mager"]),
+];
+
+const RETAILER_IDENTITIES: Record<RetrievedCandidate["retailer"], string[]> = {
+  ah: ["ah", "albert heijn"],
+  aldi: ["aldi"],
+  action: ["action"],
+  etos: ["etos"],
+  kruidvat: ["kruidvat"],
+};
+
 function candidateText(record: NormalizedRetailerPrice): string {
   return [record.brand, record.rawName, record.description].filter(Boolean).join(" ");
 }
@@ -159,6 +171,26 @@ function hasProductFormConflict(
   ));
 }
 
+function hasVariantConflict(queryTokens: string[], candidateTokens: Set<string>): boolean {
+  return EXCLUSIVE_VARIANT_GROUPS.some((group) => {
+    const requestedVariant = queryTokens.find((token) => group.has(token));
+    if (!requestedVariant) return false;
+    const candidateVariant = [...group].find((token) => candidateTokens.has(token));
+    return Boolean(candidateVariant && candidateVariant !== requestedVariant);
+  });
+}
+
+function hasRetailerIdentityConflict(candidate: RetrievedCandidate): boolean {
+  const text = candidateText(candidate.record);
+  return (Object.entries(RETAILER_IDENTITIES) as Array<[
+    RetrievedCandidate["retailer"],
+    string[],
+  ]>).some(([retailer, identities]) => (
+    retailer !== candidate.retailer
+    && identities.some((identity) => phrasePresent(text, identity))
+  ));
+}
+
 function scoreCandidate(
   request: MatchRequest,
   candidate: RetrievedCandidate,
@@ -216,11 +248,17 @@ function scoreCandidate(
   const semanticRelevant = queryTokens.length === 0 || textHits > 0;
   const productFormConflict = hasProductFormConflict(queryTokens, record, requestedBrand);
   if (productFormConflict) reasons.push("product_form_conflict");
+  const variantConflict = hasVariantConflict(queryTokens, candidateTokens);
+  if (variantConflict) reasons.push("variant_conflict");
+  const retailerIdentityConflict = hasRetailerIdentityConflict(candidate);
+  if (retailerIdentityConflict) reasons.push("retailer_identity_conflict");
   const accepted = (
     semanticRelevant
     && !lockedBrandMismatch
     && !packageScore.incompatible
     && !productFormConflict
+    && !variantConflict
+    && !retailerIdentityConflict
     && confidence >= 0.44
   );
   const requestedSizeNeedsCheck = requestedPackage !== null && packageScore.reason !== "size_exact";
@@ -247,4 +285,17 @@ export function rankMatches(request: MatchRequest, candidates: RetrievedCandidat
       if (a.accepted !== b.accepted) return a.accepted ? -1 : 1;
       return b.confidence - a.confidence;
     });
+}
+
+export function retainMatchesPerRetailer(
+  matches: RankedMatch[],
+  limit: number,
+): RankedMatch[] {
+  const counts = new Map<RetrievedCandidate["retailer"], number>();
+  return matches.filter((match) => {
+    const count = counts.get(match.retailer) ?? 0;
+    if (count >= limit) return false;
+    counts.set(match.retailer, count + 1);
+    return true;
+  });
 }

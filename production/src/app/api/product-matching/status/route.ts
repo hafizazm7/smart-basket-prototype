@@ -1,4 +1,4 @@
-import { rankMatches } from "@/modules/matching/match";
+import { rankMatches, retainMatchesPerRetailer } from "@/modules/matching/match";
 import { extractReceiptProducts, suggestReceiptLinks } from "@/modules/matching/receipt-learning";
 import { toRetailerSearchQuery } from "@/modules/matching/text";
 import type { RetrievedCandidate } from "@/modules/matching/types";
@@ -54,6 +54,9 @@ export async function GET() {
   const lemons = candidate("aldi", "lemons", "Citroenen", null, 2, "item");
   const lemonOil = candidate("action", "lemon-oil", "Vegan Omega 3 Olie Citroen", null, 250, "ml");
   const lemonCleaner = candidate("action", "lemon-cleaner", "Duck Fresh Discs Starterkit Citroen", "Duck", null, null);
+  const fullMilk = candidate("ah", "full-milk", "AH Volle melk", "AH", 1, "l");
+  const halfFullMilk = candidate("aldi", "half-full-milk", "Milsani Houdbare halfvolle melk", "Milsani", 1, "l");
+  const wrongRetailerIdentity = candidate("etos", "ah-milk-at-etos", "AH Volle melk", "AH", 1, "l");
 
   const locked = rankMatches(
     { query: "Dreft afwasmiddel 350ml", alternativesAllowed: false },
@@ -87,6 +90,11 @@ export async function GET() {
     { query: "Lemons", alternativesAllowed: false },
     [lemonOil, lemonCleaner, lemons],
   );
+  const milkVariants = rankMatches(
+    { query: "Volle melk 1L", alternativesAllowed: false },
+    [fullMilk, halfFullMilk, wrongRetailerIdentity],
+  );
+  const retailerQuotaSample = retainMatchesPerRetailer(locked, 1);
 
   const translations = {
     babyWipes: toRetailerSearchQuery("baby wipes") === "billendoekjes",
@@ -172,6 +180,21 @@ export async function GET() {
       && !match.accepted
       && match.reasons.includes("product_form_conflict")
     )),
+    exclusiveProductVariantRejected: milkVariants.some((match) => (
+      match.record.externalId === "full-milk" && match.accepted
+    )) && milkVariants.some((match) => (
+      match.record.externalId === "half-full-milk"
+      && !match.accepted
+      && match.reasons.includes("variant_conflict")
+    )),
+    wrongRetailerIdentityRejected: milkVariants.some((match) => (
+      match.record.externalId === "ah-milk-at-etos"
+      && !match.accepted
+      && match.reasons.includes("retailer_identity_conflict")
+    )),
+    retailerCandidatesRetainedFairly: new Set(
+      retailerQuotaSample.map((match) => match.retailer),
+    ).size === 5,
     retailerSearchTranslationWorks: Object.values(translations).every(Boolean),
     receiptProductLinesExtracted: receiptProducts.length === 8
       && receiptProducts.includes("AH TEMPEH")
