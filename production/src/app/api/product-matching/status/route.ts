@@ -57,6 +57,7 @@ export async function GET() {
   const fullMilk = candidate("ah", "full-milk", "AH Volle melk", "AH", 1, "l");
   const halfFullMilk = candidate("aldi", "half-full-milk", "Milsani Houdbare halfvolle melk", "Milsani", 1, "l");
   const wrongRetailerIdentity = candidate("etos", "ah-milk-at-etos", "AH Volle melk", "AH", 1, "l");
+  const coffeeMilk = candidate("kruidvat", "coffee-milk", "Friesche Vlag Goudband Volle Koffiemelk", null, 455, "ml");
 
   const locked = rankMatches(
     { query: "Dreft afwasmiddel 350ml", alternativesAllowed: false },
@@ -92,7 +93,7 @@ export async function GET() {
   );
   const milkVariants = rankMatches(
     { query: "Volle melk 1L", alternativesAllowed: false },
-    [fullMilk, halfFullMilk, wrongRetailerIdentity],
+    [fullMilk, halfFullMilk, wrongRetailerIdentity, coffeeMilk],
   );
   const retailerQuotaSample = retainMatchesPerRetailer(locked, 1);
 
@@ -102,7 +103,7 @@ export async function GET() {
     lemons: toRetailerSearchQuery("Lemons") === "citroenen",
     mayonnaise: toRetailerSearchQuery("Mayonnaise") === "mayonaise",
     milk: toRetailerSearchQuery("milk") === "melk",
-    brandedSizePreserved: toRetailerSearchQuery("Dreft dishwashing liquid 350ml") === "Dreft afwasmiddel 350ml",
+    packageRemovedFromRetailerSearch: toRetailerSearchQuery("Dreft dishwashing liquid 350ml") === "Dreft afwasmiddel",
   };
 
   const receiptProducts = extractReceiptProducts(`
@@ -184,6 +185,11 @@ export async function GET() {
       match.record.externalId === "full-milk" && match.accepted
     )) && milkVariants.some((match) => (
       match.record.externalId === "half-full-milk"
+      && !match.accepted
+      && match.reasons.includes("variant_conflict")
+    )),
+    differentMilkProductFormRejected: milkVariants.some((match) => (
+      match.record.externalId === "coffee-milk"
       && !match.accepted
       && match.reasons.includes("variant_conflict")
     )),

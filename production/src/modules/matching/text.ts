@@ -89,6 +89,7 @@ const STOP_TOKENS = new Set([
 ]);
 
 const PACKAGE_TOKEN = /^(?:\d+x)?\d+(?:\.\d+)?(?:kg|g|gr|l|ml|cl|stuks?|stuk|doekjes?|wipes?)$/;
+const RETAILER_SEARCH_PACKAGE = /\b(?:\d+\s*[x×]\s*)?\d+(?:[,.]\d+)?\s*(?:kg|g|gr|l|ml|cl|stuks?|stuk|doekjes?|wipes?)\b/gi;
 
 function applyReplacements(input: string, replacements: Array<[RegExp, string]>): string {
   return replacements.reduce((value, [pattern, replacement]) => value.replace(pattern, replacement), input);
@@ -96,6 +97,7 @@ function applyReplacements(input: string, replacements: Array<[RegExp, string]>)
 
 export function toRetailerSearchQuery(input: string): string {
   return applyReplacements(input, RETAILER_SEARCH_TRANSLATIONS)
+    .replace(RETAILER_SEARCH_PACKAGE, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

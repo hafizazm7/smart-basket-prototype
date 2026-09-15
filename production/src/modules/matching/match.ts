@@ -67,6 +67,15 @@ const EXCLUSIVE_VARIANT_GROUPS = [
   new Set(["volle", "halfvolle", "mager"]),
 ];
 
+const MILK_PRODUCT_FORMS = new Set([
+  "chocolade",
+  "chocolademelk",
+  "gecondenseerd",
+  "koffiemelk",
+  "melkpoeder",
+  "poeder",
+]);
+
 const RETAILER_IDENTITIES: Record<RetrievedCandidate["retailer"], string[]> = {
   ah: ["ah", "albert heijn"],
   aldi: ["aldi"],
@@ -172,12 +181,21 @@ function hasProductFormConflict(
 }
 
 function hasVariantConflict(queryTokens: string[], candidateTokens: Set<string>): boolean {
-  return EXCLUSIVE_VARIANT_GROUPS.some((group) => {
+  const exclusiveConflict = EXCLUSIVE_VARIANT_GROUPS.some((group) => {
     const requestedVariant = queryTokens.find((token) => group.has(token));
     if (!requestedVariant) return false;
     const candidateVariant = [...group].find((token) => candidateTokens.has(token));
     return Boolean(candidateVariant && candidateVariant !== requestedVariant);
   });
+  if (exclusiveConflict) return true;
+
+  if (!queryTokens.includes("melk")) return false;
+  const requestedMilkForms = new Set(
+    queryTokens.filter((token) => MILK_PRODUCT_FORMS.has(token)),
+  );
+  return [...MILK_PRODUCT_FORMS].some((token) => (
+    candidateTokens.has(token) && !requestedMilkForms.has(token)
+  ));
 }
 
 function hasRetailerIdentityConflict(candidate: RetrievedCandidate): boolean {
