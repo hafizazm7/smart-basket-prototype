@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { optimizeBasket } from "@/modules/optimizer/optimize";
 import type { BasketPlan, OptimizerItem, StoreBasket } from "@/modules/optimizer/types";
 import { RETAILER_KEYS } from "@/modules/retailers/sources";
@@ -180,9 +180,13 @@ function BasketPlanView({
 export default function CompareResults({
   items,
   onBack,
+  onShop,
+  onPlanChange,
 }: {
   items: OptimizerItem[];
   onBack: () => void;
+  onShop: (plan: BasketPlan | null) => void;
+  onPlanChange: (plan: BasketPlan | null) => void;
 }) {
   const [tab, setTab] = useState<CompareTab>("recommended");
   const [maxStores, setMaxStores] = useState<MaxStores>(3);
@@ -190,6 +194,9 @@ export default function CompareResults({
     () => optimizeBasket(items, maxStores === "any" ? 5 : maxStores),
     [items, maxStores],
   );
+  useEffect(() => {
+    onPlanChange(result.recommended);
+  }, [onPlanChange, result.recommended]);
   const pricedItems = result.recommended?.coveredItems ?? 0;
 
   return (
@@ -301,6 +308,10 @@ export default function CompareResults({
           <div className="card list-empty">No single store has a usable price for every item.</div>
         )
       )}
+
+      <button className="primary" type="button" onClick={() => onShop(result.recommended)}>
+        Open shopping checklist
+      </button>
 
       <p className="compare-footnote">Latest available online prices. Historical prices and membership/personal offers are not used in totals.</p>
     </section>

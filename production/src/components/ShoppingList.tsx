@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CompareResults from "@/components/CompareResults";
 import MatchReview from "@/components/MatchReview";
 import ReceiptLearning from "@/components/ReceiptLearning";
+import ShopChecklist, { type ShopAssignment } from "@/components/ShopChecklist";
+import type { BasketPlan } from "@/modules/optimizer/types";
 import type { OptimizerItem } from "@/modules/optimizer/types";
 
 type ShoppingItem = {
@@ -14,6 +16,12 @@ type ShoppingItem = {
 };
 
 const STORAGE_KEY = "smart-basket.shopping-list.v1";
+const CHECKED_KEY = "smart-basket.shop-checked.v1";
+const ASSIGNMENTS_KEY = "smart-basket.shop-assignments.v1";
+
+function listSignature(items: ShoppingItem[]): string {
+  return JSON.stringify(items.map(({ id, text, quantity }) => [id, text, quantity]));
+}
 
 function makeItem(text: string): ShoppingItem {
   return {
@@ -36,7 +44,10 @@ export default function ShoppingList() {
   const [reviewItems, setReviewItems] = useState<ShoppingItem[] | null>(null);
   const [optimizerItems, setOptimizerItems] = useState<OptimizerItem[] | null>(null);
   const [matchAttention, setMatchAttention] = useState<number | null>(null);
-  const [screen, setScreen] = useState<"list" | "compare">("list");
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [shopAssignments, setShopAssignments] = useState<Record<string, ShopAssignment> | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<BasketPlan | null>(null);
+  const [screen, setScreen] = useState<"list" | "compare" | "shop">("list");
   const matchReviewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,8 +63,26 @@ export default function ShoppingList() {
       // Keep the list usable even if local storage is unavailable or malformed.
     }
 
+    let restoredChecks: string[] = [];
+    let restoredAssignments: Record<string, ShopAssignment> | null = null;
+    try {
+      const savedChecks = JSON.parse(window.localStorage.getItem(CHECKED_KEY) ?? "[]") as unknown;
+      if (Array.isArray(savedChecks)) restoredChecks = savedChecks.filter((id): id is string => typeof id === "string");
+      const savedPlan = JSON.parse(window.localStorage.getItem(ASSIGNMENTS_KEY) ?? "null") as {
+        signature?: string;
+        assignments?: Record<string, ShopAssignment>;
+      } | null;
+      if (savedPlan?.signature === listSignature(restored) && savedPlan.assignments) {
+        restoredAssignments = savedPlan.assignments;
+      }
+    } catch {
+      // A damaged storage entry should not prevent a usable checklist.
+    }
+
     const frame = window.requestAnimationFrame(() => {
       setItems(restored);
+      setCheckedIds(new Set(restoredChecks.filter((id) => restored.some((item) => item.id === id))));
+      setShopAssignments(restoredAssignments);
       setReady(true);
     });
 
@@ -62,8 +91,16 @@ export default function ShoppingList() {
 
   useEffect(() => {
     if (!ready) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items, ready]);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      window.localStorage.setItem(CHECKED_KEY, JSON.stringify([...checkedIds]));
+      window.localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify({
+        signature: listSignature(items), assignments: shopAssignments,
+      }));
+    } catch {
+      // Checklist remains usable when browser storage is blocked.
+    }
+  }, [items, checkedIds, shopAssignments, ready]);
 
   const totalUnits = useMemo(
     () => items.reduce((sum, item) => sum + item.quantity, 0),
@@ -75,6 +112,28 @@ export default function ShoppingList() {
     setOptimizerItems(null);
     setMatchAttention(null);
     setScreen("list");
+    setShopAssignments(null);
+    setCurrentPlan(null);
+  }
+
+  function toggleChecked(id: string) {
+    setCheckedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function openShop(plan: BasketPlan | null) {
+    const assignments: Record<string, ShopAssignment> = {};
+    for (const store of plan?.stores ?? []) {
+      for (const line of store.lines) {
+        assignments[line.itemId] = { retailer: store.retailer, productName: line.productName };
+      }
+    }
+    setShopAssignments(assignments);
+    setScreen("shop");
   }
 
   function addBulkItems() {
@@ -112,6 +171,7 @@ export default function ShoppingList() {
       ),
     );
     invalidateComparison();
+    setCheckedIds((current) => new Set([...current].filter((checkedId) => checkedId !== id)));
   }
 
   function startEdit(item: ShoppingItem) {
@@ -126,6 +186,7 @@ export default function ShoppingList() {
       current.map((item) => (item.id === id ? { ...item, text: value } : item)),
     );
     invalidateComparison();
+    setCheckedIds((current) => new Set([...current].filter((checkedId) => checkedId !== id)));
     setEditingId(null);
     setEditingText("");
     setNotice("Item updated.");
@@ -134,6 +195,7 @@ export default function ShoppingList() {
   function removeItem(id: string) {
     setItems((current) => current.filter((item) => item.id !== id));
     invalidateComparison();
+    setCheckedIds((current) => new Set([...current].filter((checkedId) => checkedId !== id)));
     if (editingId === id) setEditingId(null);
     setNotice("Item removed.");
   }
@@ -142,6 +204,7 @@ export default function ShoppingList() {
     if (!items.length) return;
     if (!window.confirm("Clear the whole shopping list?")) return;
     setItems([]);
+    setCheckedIds(new Set());
     invalidateComparison();
     setNotice("Shopping list cleared.");
   }
@@ -205,7 +268,16 @@ export default function ShoppingList() {
       </header>
 
       {screen === "compare" && optimizerItems ? (
-        <CompareResults items={optimizerItems} onBack={() => setScreen("list")} />
+        <CompareResults items={optimizerItems} onBack={() => setScreen("list")} onShop={openShop} onPlanChange={setCurrentPlan} />
+      ) : screen === "shop" ? (
+        <ShopChecklist
+          items={items}
+          checkedIds={checkedIds}
+          assignments={shopAssignments}
+          onToggle={toggleChecked}
+          onReset={() => setCheckedIds(new Set())}
+          onBack={() => setScreen("list")}
+        />
       ) : (
       <section className="screen active" aria-label="Shopping list">
         <h1>Your shopping list</h1>
@@ -348,7 +420,10 @@ export default function ShoppingList() {
       <nav className="bottom-nav" aria-label="Smart Basket navigation">
         <button className={screen === "list" ? "active" : ""} type="button" onClick={() => setScreen("list")}><span className="nav-ico">☷</span>List</button>
         <button className={screen === "compare" ? "active" : ""} type="button" disabled={!optimizerItems} onClick={() => setScreen("compare")}><span className="nav-ico">⌁</span>Compare</button>
-        <button type="button" disabled><span className="nav-ico">✓</span>Shop</button>
+        <button className={screen === "shop" ? "active" : ""} type="button" onClick={() => {
+          if (screen === "compare") openShop(currentPlan);
+          else setScreen("shop");
+        }}><span className="nav-ico">✓</span>Shop</button>
         <button type="button" disabled><span className="nav-ico">⌂</span>Stores</button>
       </nav>
     </main>

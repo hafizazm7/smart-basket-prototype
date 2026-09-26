@@ -446,6 +446,34 @@ h1 {
   line-height: 1.45;
 }
 
+.shop-progress { display: grid; gap: 11px; margin-bottom: 14px; }
+.shop-progress strong { font-size: 18px; }
+.shop-progress progress { width: 100%; height: 12px; accent-color: var(--green); }
+.shop-group { padding: 0; overflow: hidden; margin-bottom: 14px; }
+.shop-group-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 16px;
+  background: var(--green-softer);
+}
+.shop-group-heading span { color: var(--green-dark); font-weight: 800; }
+.shop-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  padding: 13px 16px;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+.shop-item input { width: 26px; height: 26px; margin: 0; flex: none; accent-color: var(--green); cursor: pointer; }
+.shop-item-copy { display: grid; gap: 4px; min-width: 0; }
+.shop-item-copy strong { font-size: 16px; overflow-wrap: anywhere; }
+.shop-item-copy span { color: var(--muted); font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
+.shop-item.done .shop-item-copy { opacity: .58; }
+.shop-item.done .shop-item-copy strong { text-decoration: line-through; }
+
 .bottom-nav {
   position: fixed;
   bottom: 0;
