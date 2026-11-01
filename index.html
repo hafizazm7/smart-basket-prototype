@@ -297,7 +297,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show'
 function showScreen(name){state.lastScreen=name;persist();$$('.screen').forEach(s=>s.classList.toggle('active',s.id===name+'Screen'));$$('#bottomNav button').forEach(b=>b.classList.toggle('active',b.dataset.screen===name));$('#bottomNav').classList.toggle('hidden',name==='update');$('#topbar').classList.toggle('hidden',name==='update');window.scrollTo({top:0,behavior:'smooth'});if(name==='list')renderList();if(name==='compare')renderCompare();if(name==='shop')renderShop();if(name==='history')renderHistory();if(name==='stores')renderStores();}
 
 function catalogMatch(text){
- const norm=v=>String(v||'').toLocaleLowerCase().normalize('NFKC').replace(/[^\\p{L}\\p{N}]+/gu,' ').trim().replace(/\\s+/g,' ');
+ const norm=v=>String(v||'').toLocaleLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\s+/g,' ');
  let saved=[];try{saved=JSON.parse(localStorage.getItem('smart-basket-my-products-v1')||'[]')}catch(e){}
  if(!Array.isArray(saved))return null;
  const target=norm(text);
@@ -755,7 +755,7 @@ async function analyzeShelfPhotoV3(file){
 $('#addItemBtn').onclick=()=>{const i=$('#singleItem');if(!i.value.trim())return;addItem(i.value);i.value='';toast('Item added')};
 $('#singleItem').addEventListener('keydown',e=>{if(e.key==='Enter')$('#addItemBtn').click()});
 $('#pasteToggle').onclick=()=>{const box=$('#singleItemBox');box.classList.toggle('hidden');const open=!box.classList.contains('hidden');$('#pasteToggle').textContent=open?'Hide single item':'+ Add single item';if(open)$('#singleItem').focus()};
-$('#pasteAddBtn').onclick=()=>{const vals=$('#pasteInput').value.split(/\n|,/).map(v=>v.trim()).filter(Boolean);if(!vals.length)return;state.items.push(...vals);$('#pasteInput').value='';persist();renderList();toast(vals.length+' items added')};
+$('#pasteAddBtn').onclick=()=>{const vals=$('#pasteInput').value.split(/\n|,/).map(v=>v.trim()).filter(Boolean);if(!vals.length)return;vals.forEach(v=>{const match=catalogMatch(v);state.items.push(match?[match.name,match.size].filter(Boolean).join(' '):v)});$('#pasteInput').value='';persist();renderList();toast(vals.length+' items added')};
 $('#clearList').onclick=()=>{state.items=[];persist();renderList()};
 $('#findCheapest').onclick=()=>state.items.length?showScreen('compare'):toast('Add at least one item');
 $('#listPhotoBtn').onclick=()=>openUpdate({returnTo:'list'});
