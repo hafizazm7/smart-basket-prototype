@@ -296,7 +296,15 @@ function money(n){return '€'+Number(n).toFixed(2)}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.classList.remove('show'),1900)}
 function showScreen(name){state.lastScreen=name;persist();$$('.screen').forEach(s=>s.classList.toggle('active',s.id===name+'Screen'));$$('#bottomNav button').forEach(b=>b.classList.toggle('active',b.dataset.screen===name));$('#bottomNav').classList.toggle('hidden',name==='update');$('#topbar').classList.toggle('hidden',name==='update');window.scrollTo({top:0,behavior:'smooth'});if(name==='list')renderList();if(name==='compare')renderCompare();if(name==='shop')renderShop();if(name==='history')renderHistory();if(name==='stores')renderStores();}
 
-function addItem(text){const v=text.trim();if(!v)return;state.items.push(v);persist();renderList();}
+function catalogMatch(text){
+ const norm=v=>String(v||'').toLocaleLowerCase().normalize('NFKC').replace(/[^\\p{L}\\p{N}]+/gu,' ').trim().replace(/\\s+/g,' ');
+ let saved=[];try{saved=JSON.parse(localStorage.getItem('smart-basket-my-products-v1')||'[]')}catch(e){}
+ if(!Array.isArray(saved))return null;
+ const target=norm(text);
+ const matches=saved.filter(p=>p&&p.name&&(norm(p.name)===target||norm([p.name,p.size].filter(Boolean).join(' '))===target));
+ return matches.length===1?matches[0]:null;
+}
+function addItem(text){const v=text.trim();if(!v)return;const match=catalogMatch(v);state.items.push(match?[match.name,match.size].filter(Boolean).join(' '):v);persist();renderList();}
 function renderList(){
   $('#itemCount').textContent=state.items.length;
   const box=$('#listItems');box.innerHTML='';
@@ -311,7 +319,9 @@ function getStorePlan(){
   const storeA={name:'ALDI',short:'ALDI',cls:'aldi',items:a};
   const storeB={name:'Albert Heijn',short:'AH',cls:'ah',items:b.length?b:[items[items.length-1]]};
   const priceFor=(name,store)=>{
-    const id=store+'|'+name;if(state.overrides[id])return Number(state.overrides[id]);
+    const id=store+'|'+name;if(Object.prototype.hasOwnProperty.call(state.overrides,id))return Number(state.overrides[id]);
+    const catalog=catalogMatch(name);
+    if(catalog&&catalog.store===store&&catalog.price!==''&&catalog.price!=null&&Number.isFinite(Number(catalog.price)))return Number(catalog.price);
     const low=name.toLowerCase();
     const map={carrots:.79,lemons:1.29,mayonnaise:.75,'black pepper':.88,'baby wipes':1.49,dreft:.99,'wholegrain bread':.93,fruit:1.95,'gouda cheese':4.99,slagroom:.99};
     let v=Object.entries(map).find(([k])=>low.includes(k))?.[1];
