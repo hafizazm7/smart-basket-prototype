@@ -104,7 +104,26 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
     <button class="primary" id="findCheapest">Find Cheapest</button>
   </section>
 
-  <section class="screen" id="compareScreen">
+  <section class="screen" id="productsScreen">
+<h1>My Products</h1>
+<p class="sub">Your personal product master. Scan or enter details, review, and save for future shopping lists.</p>
+<div class="row space" style="margin-bottom:12px"><strong id="productCount">0 saved products</strong><button class="secondary" id="newProduct">+ Add product</button></div>
+<div id="productFormPanel" class="card stack" hidden style="margin-bottom:16px">
+<h2 id="productFormTitle">Add product</h2>
+<form id="productForm" class="stack">
+<label>Product name *<input class="text-input" id="product_name" required maxlength="120" placeholder="e.g. Volle Melk"></label>
+<div class="grid2"><label>Brand<input class="text-input" id="product_brand" maxlength="80"></label><label>Size<input class="text-input" id="product_size" maxlength="40" placeholder="1 L"></label></div>
+<div class="grid2"><label>Store<input class="text-input" id="product_store" maxlength="80" placeholder="ALDI"></label><label>Price (€)<input class="text-input" id="product_price" inputmode="decimal" placeholder="1.49"></label></div>
+<label>Notes<input class="text-input" id="product_notes" maxlength="200" placeholder="Optional"></label>
+<label class="secondary" style="display:block;text-align:center;padding:13px">📷 Scan product or shelf label<input id="productPhoto" type="file" accept="image/*" style="display:none"></label>
+<p class="helper" id="productPhotoStatus">Photo optional — scan to suggest details, then confirm.</p>
+<div class="row"><button class="primary" type="submit">Save product</button><button class="secondary" id="cancelProduct" type="button">Cancel</button></div>
+</form></div>
+<input class="text-input" id="productSearch" placeholder="Search saved products…" aria-label="Search saved products" style="margin-bottom:12px">
+<div id="productsList"></div>
+<p class="helper">Products are stored on this device. Photo recognition is a suggestion, not verified product data.</p>
+</section>
+<section class="screen" id="compareScreen">
     <h1>Compare your basket</h1>
     <p class="sub">Prices from your selected stores, using the freshest reliable source.</p>
 
@@ -248,6 +267,7 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
 
   <nav class="bottom-nav" id="bottomNav">
     <button class="active" data-screen="list"><span class="nav-ico">☷</span>List</button>
+    <button data-screen="products"><span class="nav-ico">▦</span>Products</button>
     <button data-screen="compare"><span class="nav-ico">⌁</span>Compare</button>
     <button data-screen="shop"><span class="nav-ico">✓</span>Shop</button>
     <button data-screen="stores"><span class="nav-ico">⌂</span>Stores</button>
@@ -750,5 +770,6 @@ $$('#maxStoreGrid button').forEach(b=>b.onclick=()=>{state.maxStores=b.dataset.m
 
 renderList();renderStores();renderCompare();renderShop();showScreen(state.lastScreen==='update'?'list':state.lastScreen||'list');
 </script>
+<script src="my-products.js"></script>
 </body>
 </html>
