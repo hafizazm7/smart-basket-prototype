@@ -104,14 +104,33 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
     <button class="primary" id="findCheapest">Find Cheapest</button>
   </section>
 
-  <section class="screen" id="compareScreen">
+  <section class="screen" id="productsScreen">
+<h1>My Products</h1>
+<p class="sub">Your personal product master. Scan or enter details, review, and save for future shopping lists.</p>
+<div class="row space" style="margin-bottom:12px"><strong id="productCount">0 saved products</strong><button class="secondary" id="newProduct">+ Add product</button></div>
+<div id="productFormPanel" class="card stack" hidden style="margin-bottom:16px">
+<h2 id="productFormTitle">Add product</h2>
+<form id="productForm" class="stack">
+<label>Product name *<input class="text-input" id="product_name" required maxlength="120" placeholder="e.g. Volle Melk"></label>
+<div class="grid2"><label>Brand<input class="text-input" id="product_brand" maxlength="80"></label><label>Size<input class="text-input" id="product_size" maxlength="40" placeholder="1 L"></label></div>
+<div class="grid2"><label>Store<input class="text-input" id="product_store" maxlength="80" placeholder="ALDI"></label><label>Price (€)<input class="text-input" id="product_price" inputmode="decimal" placeholder="1.49"></label></div>
+<label>Notes<input class="text-input" id="product_notes" maxlength="200" placeholder="Optional"></label>
+<label class="secondary" style="display:block;text-align:center;padding:13px">📷 Scan product or shelf label<input id="productPhoto" type="file" accept="image/*" style="display:none"></label>
+<p class="helper" id="productPhotoStatus">Photo optional — scan to suggest details, then confirm.</p>
+<div class="row"><button class="primary" type="submit">Save product</button><button class="secondary" id="cancelProduct" type="button">Cancel</button></div>
+</form></div>
+<input class="text-input" id="productSearch" placeholder="Search saved products…" aria-label="Search saved products" style="margin-bottom:12px">
+<div id="productsList"></div>
+<p class="helper">Products are stored on this device. Photo recognition is a suggestion, not verified product data.</p>
+</section>
+<section class="screen" id="compareScreen">
     <h1>Compare your basket</h1>
-    <p class="sub">Prices from your selected stores, using the freshest reliable source.</p>
+    <p class="sub">Prototype comparison. Prices and store allocations may be simulated until confirmed.</p><div class="soft-card" role="status" style="margin-bottom:14px"><strong>⚠ Demo estimates — not verified savings</strong><p class="helper">Only prices you explicitly save are confirmed. Store recommendations and savings calculations remain illustrative. Do not rely on them for purchases.</p></div>
 
     <div class="store-icons" id="compareStoreIcons"></div>
 
     <div class="savings" style="margin-top:10px">
-      <div class="eyebrow">Recommended basket</div>
+      <div class="eyebrow">Illustrative basket · demo only</div>
       <div class="big">Save <span id="savingAmount">€6.34</span> <span id="savingPct">(22%)</span></div>
       <div class="small">Total <strong id="recommendedTotalTop">€22.86</strong> vs <strong id="singleTotalTop">€29.20</strong> at the cheapest complete single store.</div>
     </div>
@@ -124,7 +143,7 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
 
     <div id="compareRecommended">
       <div class="card recommend">
-        <div class="recommend-tag">★ BEST PRACTICAL BASKET</div>
+        <div class="recommend-tag">DEMO ALLOCATION — NOT OPTIMIZED</div>
         <div class="row space" style="margin-top:3px">
           <div><div class="label-muted">2 stores · best balance</div><div class="basket-total" id="recommendedTotal">€22.86</div></div>
           <div class="inline-info"><span class="dot-status"></span>Current</div>
@@ -240,7 +259,7 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
         <div class="celebrate-stat"><strong id="completeStores">0</strong><span>Stores visited</span></div>
       </div>
       <div class="celebrate-items" id="completeItems"></div>
-      <div class="celebrate-note">Savings are based on the recommended basket and current available prices.</div>
+      <div class="celebrate-note">Illustrative savings only; comparison is not yet based on complete verified store prices.</div>
       <button class="primary" id="completeHistory">View shopping history</button>
       <button class="secondary" id="completeNewList">Start a new list</button>
     </div>
@@ -248,6 +267,7 @@ h1{font-size:30px;line-height:1.08;margin:0 0 8px;letter-spacing:-.6px}h2{font-s
 
   <nav class="bottom-nav" id="bottomNav">
     <button class="active" data-screen="list"><span class="nav-ico">☷</span>List</button>
+    <button data-screen="products"><span class="nav-ico">▦</span>Products</button>
     <button data-screen="compare"><span class="nav-ico">⌁</span>Compare</button>
     <button data-screen="shop"><span class="nav-ico">✓</span>Shop</button>
     <button data-screen="stores"><span class="nav-ico">⌂</span>Stores</button>
@@ -276,7 +296,15 @@ function money(n){return '€'+Number(n).toFixed(2)}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.classList.remove('show'),1900)}
 function showScreen(name){state.lastScreen=name;persist();$$('.screen').forEach(s=>s.classList.toggle('active',s.id===name+'Screen'));$$('#bottomNav button').forEach(b=>b.classList.toggle('active',b.dataset.screen===name));$('#bottomNav').classList.toggle('hidden',name==='update');$('#topbar').classList.toggle('hidden',name==='update');window.scrollTo({top:0,behavior:'smooth'});if(name==='list')renderList();if(name==='compare')renderCompare();if(name==='shop')renderShop();if(name==='history')renderHistory();if(name==='stores')renderStores();}
 
-function addItem(text){const v=text.trim();if(!v)return;state.items.push(v);persist();renderList();}
+function catalogMatch(text){
+ const norm=v=>String(v||'').toLocaleLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\s+/g,' ');
+ let saved=[];try{saved=JSON.parse(localStorage.getItem('smart-basket-my-products-v1')||'[]')}catch(e){}
+ if(!Array.isArray(saved))return null;
+ const target=norm(text);
+ const matches=saved.filter(p=>p&&p.name&&(norm(p.name)===target||norm([p.name,p.size].filter(Boolean).join(' '))===target));
+ return matches.length===1?matches[0]:null;
+}
+function addItem(text){const v=text.trim();if(!v)return;const match=catalogMatch(v);state.items.push(match?[match.name,match.size].filter(Boolean).join(' '):v);persist();renderList();}
 function renderList(){
   $('#itemCount').textContent=state.items.length;
   const box=$('#listItems');box.innerHTML='';
@@ -289,9 +317,11 @@ function getStorePlan(){
   const split=Math.max(1,Math.ceil(items.length*.56));
   const a=items.slice(0,split), b=items.slice(split);
   const storeA={name:'ALDI',short:'ALDI',cls:'aldi',items:a};
-  const storeB={name:'Albert Heijn',short:'AH',cls:'ah',items:b.length?b:[items[items.length-1]]};
+  const storeB={name:'Albert Heijn',short:'AH',cls:'ah',items:b};
   const priceFor=(name,store)=>{
-    const id=store+'|'+name;if(state.overrides[id])return Number(state.overrides[id]);
+    const id=store+'|'+name;if(Object.prototype.hasOwnProperty.call(state.overrides,id))return Number(state.overrides[id]);
+    const catalog=catalogMatch(name);
+    if(catalog&&catalog.store===store&&catalog.price!==''&&catalog.price!=null&&Number.isFinite(Number(catalog.price)))return Number(catalog.price);
     const low=name.toLowerCase();
     const map={carrots:.79,lemons:1.29,mayonnaise:.75,'black pepper':.88,'baby wipes':1.49,dreft:.99,'wholegrain bread':.93,fruit:1.95,'gouda cheese':4.99,slagroom:.99};
     let v=Object.entries(map).find(([k])=>low.includes(k))?.[1];
@@ -322,10 +352,10 @@ function renderCompare(){
 
 function renderShop(){
   const p=getStorePlan();state.storeIndex=Math.min(state.storeIndex,p.stores.length-1);const s=p.stores[state.storeIndex];
-  $('#storeCounter').textContent='STORE '+(state.storeIndex+1)+' OF '+p.stores.length;$('#shopStoreName').textContent=s.name;$('#shopStoreTotal').textContent=money(s.total);$('#freshnessText').textContent='Updated today';
+  $('#storeCounter').textContent='STORE '+(state.storeIndex+1)+' OF '+p.stores.length;$('#shopStoreName').textContent=s.name;$('#shopStoreTotal').textContent=money(s.total);$('#freshnessText').textContent='Demo estimates';
   const tabs=$('#shopStoreTabs');tabs.innerHTML='';p.stores.forEach((store,i)=>{const b=document.createElement('button');b.className='shop-store-tab'+(i===state.storeIndex?' active':'');b.textContent=store.short+' '+(i+1)+'/'+p.stores.length;b.setAttribute('aria-label','Open '+store.name);b.onclick=()=>{state.storeIndex=i;persist();renderShop();window.scrollTo({top:0,behavior:'smooth'})};tabs.appendChild(b)});
   const box=$('#shopItems');box.innerHTML='';
-  s.items.forEach(name=>{const id=s.name+'|'+name,price=p.priceFor(name,s.name),row=document.createElement('div');row.className='check-row'+(state.checks[id]?' checked':'');row.innerHTML='<div class="check-main"><input type="checkbox"><div><div class="product"></div><div class="product-meta">Expected '+money(price)+'</div><div class="source-row"><span class="dot-status"></span><span>Website price · updated today</span></div></div><div class="product-price">'+money(price)+'</div></div><button class="photo-link">📷 Price different?</button>';row.querySelector('.product').textContent=name;const cb=row.querySelector('input');cb.checked=!!state.checks[id];cb.onchange=()=>{state.checks[id]=cb.checked;persist();renderShop()};row.querySelector('.photo-link').onclick=()=>openUpdate({product:name,store:s.name,size:'',price:price,id});box.appendChild(row)});
+  s.items.forEach(name=>{const id=s.name+'|'+name,price=p.priceFor(name,s.name),row=document.createElement('div');row.className='check-row'+(state.checks[id]?' checked':'');row.innerHTML='<div class="check-main"><input type="checkbox"><div><div class="product"></div><div class="product-meta">Expected '+money(price)+'</div><div class="source-row"><span class="dot-status"></span><span>Demo price unless manually confirmed</span></div></div><div class="product-price">'+money(price)+'</div></div><button class="photo-link">📷 Price different?</button>';row.querySelector('.product').textContent=name;const cb=row.querySelector('input');cb.checked=!!state.checks[id];cb.onchange=()=>{state.checks[id]=cb.checked;persist();renderShop()};row.querySelector('.photo-link').onclick=()=>openUpdate({product:name,store:s.name,size:'',price:price,id});box.appendChild(row)});
   const done=s.items.filter(n=>state.checks[s.name+'|'+n]).length;$('#shopProgressText').textContent=done+' of '+s.items.length+' items done';$('#shopProgress').style.width=(done/s.items.length*100)+'%';
   const final=state.storeIndex===p.stores.length-1;const first=state.storeIndex===0;$('#prevStore').disabled=first;$('#nextStore').textContent=final?'Finish shopping':'Next store →';$('#shoppingDone').classList.remove('show');$('#nextStore').disabled=false;$('#nextStore').style.opacity='1';
 }
@@ -361,13 +391,13 @@ function showCompletion(p){
   const totalItems=p.stores.reduce((n,store)=>n+store.items.length,0);
   const checked=p.stores.reduce((n,store)=>n+store.items.filter(item=>state.checks[store.name+'|'+item]).length,0);
   $('#completeSaved').textContent=money(p.saving);
-  $('#completePct').textContent=p.pct+'% saved vs cheapest 1-store basket';
+  $('#completePct').textContent='Illustrative estimate — not verified savings';
   $('#completeTotal').textContent=money(p.recommended);
   $('#completeSingle').textContent=money(p.single);
   $('#completeStores').textContent=p.stores.length;
   $('#completeItems').textContent=checked+' of '+totalItems+' items checked';
   $('#completeModal').classList.add('open');
-  $('#shoppingDone').textContent='✓ Shopping complete — you saved '+money(p.saving)+'!';
+  $('#shoppingDone').textContent='✓ Shopping complete — demo estimate '+money(p.saving)+' (unverified)';
   $('#shoppingDone').classList.add('show');
   $('#nextStore').textContent='Shopping completed ✓';
   $('#nextStore').disabled=true;
@@ -725,7 +755,7 @@ async function analyzeShelfPhotoV3(file){
 $('#addItemBtn').onclick=()=>{const i=$('#singleItem');if(!i.value.trim())return;addItem(i.value);i.value='';toast('Item added')};
 $('#singleItem').addEventListener('keydown',e=>{if(e.key==='Enter')$('#addItemBtn').click()});
 $('#pasteToggle').onclick=()=>{const box=$('#singleItemBox');box.classList.toggle('hidden');const open=!box.classList.contains('hidden');$('#pasteToggle').textContent=open?'Hide single item':'+ Add single item';if(open)$('#singleItem').focus()};
-$('#pasteAddBtn').onclick=()=>{const vals=$('#pasteInput').value.split(/\n|,/).map(v=>v.trim()).filter(Boolean);if(!vals.length)return;state.items.push(...vals);$('#pasteInput').value='';persist();renderList();toast(vals.length+' items added')};
+$('#pasteAddBtn').onclick=()=>{const vals=$('#pasteInput').value.split(/\n|,/).map(v=>v.trim()).filter(Boolean);if(!vals.length)return;vals.forEach(v=>{const match=catalogMatch(v);state.items.push(match?[match.name,match.size].filter(Boolean).join(' '):v)});$('#pasteInput').value='';persist();renderList();toast(vals.length+' items added')};
 $('#clearList').onclick=()=>{state.items=[];persist();renderList()};
 $('#findCheapest').onclick=()=>state.items.length?showScreen('compare'):toast('Add at least one item');
 $('#listPhotoBtn').onclick=()=>openUpdate({returnTo:'list'});
@@ -750,5 +780,6 @@ $$('#maxStoreGrid button').forEach(b=>b.onclick=()=>{state.maxStores=b.dataset.m
 
 renderList();renderStores();renderCompare();renderShop();showScreen(state.lastScreen==='update'?'list':state.lastScreen||'list');
 </script>
+<script src="my-products.js"></script>
 </body>
 </html>
